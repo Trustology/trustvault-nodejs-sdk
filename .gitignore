@@ -1,0 +1,24 @@
+.idea
+.terraform
+.vscode
+.aws
+
+node_modules
+
+build
+dist
+
+coverage
+.nyc_output
+.gitlab-ci.yml
+
+bin/env.vars
+
+# input vars file for deployment CI
+input-vars.json
+
+# temp terraform files
+generated.tfvars
+
+.DS_Store
+deploy-output.json

@@ -1,0 +1,637 @@
+import {
+  AddSignatureGraphQlResponse,
+  AddSignaturePayload,
+  AddSignatureVariables,
+  BitcoinAddressType,
+  BitcoinAddressUsageType,
+  CreateBitcoinAddressGraphQlResponse,
+  CreateBitcoinAddressVariables,
+  CreateBitcoinTransactionGraphQlResponse,
+  CreateBitcoinTransactionIdResponse,
+  CreateBitcoinTransactionVariables,
+  CreateChangePolicyGraphQlResponse,
+  CreateChangePolicyRequestResponse,
+  CreateChangePolicyVariables,
+  CreateEthereumTransactionGraphQlResponse,
+  CreateEthereumTransactionResponse,
+  CreateEthereumTransactionVariables,
+  GetRequestGraphQlResponse,
+  GetRequestVariables,
+  GetSubWalletsGraphQlResponse,
+  GraphQlQueryVariable,
+  HdWalletPath,
+  HdWalletPathObj,
+  HexString,
+  IntString,
+  PolicySchedule,
+  RequestItem,
+  SubWallet,
+  TransactionSpeed,
+  TrustVaultGraphQLClientOptions,
+} from "../types";
+import { AppSyncClient, createAppSyncClient, executeMutation, executeQuery } from "./graphql-client";
+
+export class TrustVaultGraphQLClient {
+  private clientWithAPIKeyAuthorization: AppSyncClient;
+
+  constructor({ apiKey, url, timeout }: TrustVaultGraphQLClientOptions) {
+    this.clientWithAPIKeyAuthorization = createAppSyncClient(timeout, url, apiKey);
+  }
+
+  /**
+   * Create a request to change the delegate of the given walletId's policy
+   * @param walletId
+   * @param newDelegatePublicKey
+   */
+  public async createChangePolicyRequest(
+    walletId: string,
+    newDelegatePublicKey: HexString,
+  ): Promise<CreateChangePolicyRequestResponse> {
+    const { query, variables } = this.createChangePolicyRequestMutation(walletId, newDelegatePublicKey);
+
+    const result = await executeMutation<CreateChangePolicyGraphQlResponse>(
+      this.clientWithAPIKeyAuthorization,
+      query,
+      variables,
+    );
+    if (!result.data) {
+      throw new Error(`Failed to create authorisation request: ${JSON.stringify(result)}`);
+    }
+
+    return result.data.createChangePolicyRequest.requests[0];
+  }
+
+  /**
+   * Create a request to send a bitcoin transaction
+   * @param subWalletId
+   * @param toAddress
+   * @param amount - satoshi
+   * @param speed
+   */
+  public async createBitcoinTransaction(
+    subWalletId: string,
+    toAddress: string,
+    amount: IntString,
+    speed: TransactionSpeed = "MEDIUM",
+  ): Promise<CreateBitcoinTransactionIdResponse> {
+    const { query, variables } = this.createBitcoinTransactionMutation(subWalletId, toAddress, amount, speed);
+
+    const result = await executeMutation<CreateBitcoinTransactionGraphQlResponse>(
+      this.clientWithAPIKeyAuthorization,
+      query,
+      variables,
+    );
+    if (
+      !result.data?.createBitcoinTransaction.signData?.transaction ||
+      !result.data.createBitcoinTransaction.requestId
+    ) {
+      throw new Error(`Failed to create bitcoin transaction: ${JSON.stringify(result)}`);
+    }
+
+    return result.data.createBitcoinTransaction;
+  }
+
+  /**
+   * Create a request to send an ethereum transaction
+   * @param fromAddress - the address to send the ethereum transaction from (0x prefixed hex string)
+   * @param toAddress - the recipient address of the ethereum transaction (0x prefixed hex string)
+   * @param amount - amount in smallest denominator unit of the asset (i.e. wei in ETH)
+   * @param assetSymbol - see below for the supported ETH asset symbols
+   * @param speed - optional, the speed of the transaction (defaults to 'MEDIUM')
+   * @param currency - optional, the currency you want the transaction value to be converted to for verification (defaults to 'GBP)
+   *                   "GBP" | "USD" | "EUR" | "AED" | "CHF" | "CNY" | "JPY" + supported tokens
+   * @see: supported tokens: https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
+   */
+  public async createEthereumTransaction(
+    fromAddress: HexString,
+    toAddress: HexString,
+    amount: IntString,
+    assetSymbol: string,
+    speed: TransactionSpeed = "MEDIUM",
+    currency: string = "GBP",
+  ): Promise<CreateEthereumTransactionResponse> {
+    const { query, variables } = this.createEthereumTransactionMutation(
+      fromAddress,
+      toAddress,
+      amount,
+      assetSymbol,
+      speed,
+      currency,
+    );
+
+    const result = await executeMutation<CreateEthereumTransactionGraphQlResponse>(
+      this.clientWithAPIKeyAuthorization,
+      query,
+      variables,
+    );
+
+    const createEthereumTransactionResponse = result.data?.createEthereumTransaction;
+    const signData = createEthereumTransactionResponse?.signData;
+    if (!signData || !createEthereumTransactionResponse?.requestId) {
+      throw new Error(`Failed to create ethereum transaction: ${JSON.stringify(result)}`);
+    }
+
+    const response: CreateEthereumTransactionResponse = {
+      ...createEthereumTransactionResponse,
+      signData: {
+        ...signData,
+        hdWalletPath: this.hdWalletPathObjToArray(signData.hdWalletPath),
+      },
+    };
+
+    return response;
+  }
+
+  /**
+   * Create a new bitcoin receive address for the given subWalletId
+   * @param subWalletId
+   */
+  public async createBitcoinReceiveAddress(subWalletId: string): Promise<string> {
+    const { query, variables } = this.createBitcoinAddressMutation(subWalletId);
+
+    const result = await executeMutation<CreateBitcoinAddressGraphQlResponse>(
+      this.clientWithAPIKeyAuthorization,
+      query,
+      variables,
+    );
+    if (!result.data) {
+      throw new Error(`Failed to create bitcoin address: ${JSON.stringify(result)}`);
+    }
+
+    return result.data.createBitcoinAddress;
+  }
+
+  /**
+   * Retrieve the list of subWallets available
+   */
+  public async getSubWallets(): Promise<SubWallet[]> {
+    const { query } = this.getSubWalletsQuery();
+
+    const result = await executeMutation<GetSubWalletsGraphQlResponse>(this.clientWithAPIKeyAuthorization, query);
+    if (!result.data) {
+      throw new Error(`Failed to get wallets: ${JSON.stringify(result)}`);
+    }
+
+    return result.data.user.subWallets.items;
+  }
+
+  /**
+   * Add a signature to the given requestId
+   * @param addSignaturePayload
+   */
+  public async addSignature(addSignaturePayload: AddSignaturePayload): Promise<string> {
+    const { query } = this.addSignatureMutation(addSignaturePayload);
+
+    const result = await executeMutation<AddSignatureGraphQlResponse>(
+      this.clientWithAPIKeyAuthorization,
+      query,
+      addSignaturePayload,
+    );
+    if (!result.data) {
+      throw new Error(
+        `Failed to add signature to requestId ${addSignaturePayload.requestId}: ${JSON.stringify(result)}`,
+      );
+    }
+
+    return result.data.addSignature.requestId;
+  }
+
+  /**
+   * Retrieves the request for the given requestId
+   * @param requestId
+   */
+  public async getRequest(requestId: string): Promise<RequestItem> {
+    const { query, variables } = this.getRequestQuery(requestId);
+
+    const result = await executeQuery<GetRequestGraphQlResponse>(this.clientWithAPIKeyAuthorization, query, variables);
+    if (!result.data) {
+      throw new Error(`Failed to get request: ${JSON.stringify(result)}`);
+    }
+
+    return result.data.getRequest;
+  }
+
+  // Helpers
+
+  /**
+   * Creates a one of one (1 delegate / 1 quorum) delegate policy schedule
+   * @param newDelegatePublicKey
+   */
+  private oneOfOneDelegateSchedule(newDelegatePublicKey: HexString): PolicySchedule {
+    return [
+      {
+        quorumCount: 1,
+        keys: [newDelegatePublicKey],
+      },
+    ];
+  }
+
+  /**
+   * Converts the a hdWalletPath object to a hdWalletPath array format
+   * @param hdWalletPathObj
+   */
+  private hdWalletPathObjToArray(hdWalletPathObj: HdWalletPathObj): HdWalletPath {
+    const { hdWalletPurpose, hdWalletCoinType, hdWalletAccount, hdWalletUsage, hdWalletAddressIndex } = hdWalletPathObj;
+    return [hdWalletPurpose, hdWalletCoinType, hdWalletAccount, hdWalletUsage, hdWalletAddressIndex];
+  }
+
+  // Mutation/Query methods
+
+  /**
+   * addSignatureMutation graphQL query
+   * @param addSignaturePayload
+   */
+  private addSignatureMutation(addSignaturePayload: AddSignaturePayload): GraphQlQueryVariable<AddSignaturePayload> {
+    const mutation = `
+      mutation(
+        $requestId: String!
+        $signRequests: [SignRequest!]!
+      ) {
+        addSignature(
+          addSignatureInput: {
+            requestId: $requestId
+            signRequests: $signRequests
+          }
+        ) {
+          requestId
+        }
+      }
+    `;
+    const addSignatureVariables: AddSignatureVariables = addSignaturePayload;
+
+    return {
+      query: mutation,
+      variables: addSignatureVariables,
+    };
+  }
+
+  /**
+   * createChangePolicyRequestMutation graphQL query
+   * @param walletId
+   * @param newDelegatePublicKey
+   */
+  private createChangePolicyRequestMutation(
+    walletId: string,
+    newDelegatePublicKey: HexString,
+  ): GraphQlQueryVariable<CreateChangePolicyVariables> {
+    const mutation = `
+      mutation($walletId: String!, $delegateSchedules: [[ScheduleInput!]!]!) {
+        createChangePolicyRequest(
+          createChangePolicyRequestInput: {
+            walletId: $walletId
+            delegateSchedules: $delegateSchedules
+          }
+        ) {
+          requests {
+            walletId
+            requestId
+            recovererTrustVaultSignature
+            unverifiedDigestData{
+              shaSignData
+              signData
+            }
+            policyTemplate {
+              expiryTimestamp
+              delegateSchedules {
+                keys
+                quorumCount
+              }
+              recovererSchedules {
+                keys
+                quorumCount
+              }
+            }
+          }
+        }
+      }
+    `;
+    const createChangePolicyVariables: CreateChangePolicyVariables = {
+      walletId,
+      delegateSchedules: [this.oneOfOneDelegateSchedule(newDelegatePublicKey)],
+    };
+
+    return {
+      query: mutation,
+      variables: createChangePolicyVariables,
+    };
+  }
+
+  /**
+   * getSubWalletsQuery graphQL query
+   */
+  private getSubWalletsQuery(): GraphQlQueryVariable {
+    const query = `
+      query getSubWallets {
+        user {
+          subWallets {
+            items {
+              address
+              name
+              id: walletId
+              subWalletId
+              createdAt
+              updatedAt
+              ... on BlockchainWallet {
+                chain
+                publicKey
+                trustVaultPublicKeySignature
+                __typename
+              }
+              balances {
+                items {
+                  asset {
+                    symbol
+                    displaySymbol
+                    name
+                  }
+                  amount {
+                    value
+                    currency
+                    timestamp
+                    type
+                    chain
+                    decimalPlace
+                  }
+                }
+              }
+            }
+            nextToken
+          }
+        }
+      }
+    `;
+    return { query };
+  }
+
+  /**
+   * createBitcoinTransactionMutation graphQL query
+   * @param subWalletId
+   * @param toAddress
+   * @param {IntString} amount - satoshi
+   * @param speed - defaults to MEDIUM
+   * @param sendToDevicesForSigning
+   * @param sendToNetworkWhenSigned
+   */
+  private createBitcoinTransactionMutation(
+    subWalletId: string,
+    to: string,
+    value: IntString,
+    speed: TransactionSpeed = "MEDIUM",
+    sendToDevicesForSigning: boolean = true,
+    sendToNetworkWhenSigned: boolean = true,
+  ): GraphQlQueryVariable<CreateBitcoinTransactionVariables> {
+    const mutation = `
+      mutation createBitcoinTransaction (
+        $to: String!
+        $subWalletId: String!
+        $value: String!
+        $speed: TransactionSpeed
+        $sendToNetworkWhenSigned: Boolean
+        $sendToDevicesForSigning: Boolean
+      ) {
+        createBitcoinTransaction(
+          createBitcoinTransactionInput: {
+            bitcoinTransactionParams: {
+              subWalletId: $subWalletId
+              to: $to
+              amount: {
+                value: $value
+                currency: "SATOSHI"
+              }
+              speed: $speed
+            }
+            source: "API"
+            sendToNetworkWhenSigned: $sendToNetworkWhenSigned
+            sendToDevicesForSigning: $sendToDevicesForSigning
+          }
+        ) {
+          fee
+          maxAllowedToSend
+          feeForMax
+          chainRate
+          balance
+          signData {
+            transaction {
+              version
+              inputs {
+                address
+                txId
+                outputIndex
+                script
+                sequence
+                value
+                publicKeyProvenanceData {
+                  ...publicKeyProvenance
+                }
+                unverifiedDigestData{
+                  transactionDigest
+                  shaSignData
+                  signData
+                }
+              }
+              outputs {
+                recipientAddress
+                amountToSend
+                publicKeyProvenanceData {
+                  ...publicKeyProvenance
+                }
+              }
+              lockTime
+              sighash
+            }
+          }
+          ... on CreateBitcoinTransactionIdResponse {
+            requestId
+          }
+        }
+      }
+
+      fragment publicKeyProvenance on BitcoinPublicKeyProvenance {
+        publicKey
+        path
+        trustVaultProvenanceSignature
+        unverifiedAddress
+        addressType
+        __typename
+      }
+    `;
+
+    const createBitcoinTransactionVariables: CreateBitcoinTransactionVariables = {
+      to,
+      subWalletId,
+      value,
+      speed,
+      sendToNetworkWhenSigned,
+      sendToDevicesForSigning,
+    };
+
+    return {
+      query: mutation,
+      variables: createBitcoinTransactionVariables,
+    };
+  }
+
+  /**
+   * createEthereumTransactionMutation graphQL query
+   * @param fromAddress - the address to send the ethereum transaction from (0x prefixed hex string)
+   * @param toAddress - the recipient address of the ethereum transaction (0x prefixed hex string)
+   * @param amount - amount in smallest denominator unit of the asset (i.e. wei in ETH)
+   * @param assetSymbol - see below for the supported ETH asset symbols
+   * @param speed - optional, the speed of the transaction (defaults to 'MEDIUM')
+   * @param currency - optional, the currency you want the transaction value to be converted to for verification (defaults to 'GBP)
+   *                   "GBP" | "USD" | "EUR" | "AED" | "CHF" | "CNY" | "JPY" + supported tokens (see below)
+   */
+  private createEthereumTransactionMutation(
+    from: HexString,
+    to: HexString,
+    value: IntString,
+    assetSymbol: string,
+    speed: TransactionSpeed = "MEDIUM",
+    currency: string = "GBP",
+    sendToDevicesForSigning: boolean = true,
+    sendToNetworkWhenSigned: boolean = true,
+  ): GraphQlQueryVariable<CreateEthereumTransactionVariables> {
+    const mutation = `
+      mutation (
+          $from: String!
+          $to: String!
+          $value: String!
+          $assetSymbol: String!
+          $speed: TransactionSpeed
+          $currency: String
+          $sendToNetworkWhenSigned: Boolean
+          $sendToDevicesForSigning: Boolean
+      ) {
+        createEthereumTransaction(
+          createTransactionInput: {
+            ethereumTransaction: {
+              assetSymbol: $assetSymbol
+              fromAddress: $from
+              to: $to
+              value: $value
+              speed: $speed
+            }
+            source: "API"
+            currency: $currency
+            sendToNetworkWhenSigned: $sendToNetworkWhenSigned
+            sendToDevicesForSigning: $sendToDevicesForSigning
+          }
+        ) {
+          ... on CreateEthereumTransactionResponse {
+            requestId
+          }
+          signData {
+            transaction {
+              to
+              fromAddress
+              value
+              gasPrice
+              gasLimit
+              nonce
+              chainId
+              data
+            }
+            hdWalletPath {
+              hdWalletPurpose
+              hdWalletCoinType
+              hdWalletAccount
+              hdWalletUsage
+              hdWalletAddressIndex
+            }
+            unverifiedDigestData {
+              transactionDigest
+              signData
+              shaSignData
+            }
+          }
+          assetRate
+          chainRate
+        }
+      }
+    `;
+
+    const createEthereumTransactionVariables: CreateEthereumTransactionVariables = {
+      from,
+      to,
+      value,
+      assetSymbol,
+      speed,
+      currency,
+      sendToNetworkWhenSigned,
+      sendToDevicesForSigning,
+    };
+
+    return {
+      query: mutation,
+      variables: createEthereumTransactionVariables,
+    };
+  }
+
+  /**
+   * getRequestQuery graphQL query
+   * @param requestId
+   */
+  private getRequestQuery(requestId: string): GraphQlQueryVariable<GetRequestVariables> {
+    const query = `query($requestId: String!) {
+      getRequest(requestId: $requestId) {
+        requestId
+        status
+        type
+        transactionHash
+      }
+    }`;
+    const getRequestVariables: GetRequestVariables = { requestId };
+
+    return {
+      query,
+      variables: getRequestVariables,
+    };
+  }
+
+  /**
+   * createBitcoinAddressMutation graphQL query
+   * @param subWalletId
+   * @param addressType
+   * @param addressUsageType
+   */
+  private createBitcoinAddressMutation(
+    subWalletId: string,
+    addressType: BitcoinAddressType = "COMPATIBILITY",
+    addressUsageType: BitcoinAddressUsageType = "RECEIVE",
+  ): GraphQlQueryVariable<CreateBitcoinAddressVariables> {
+    const mutation = `
+      mutation createBitcoinAddress(
+        $subWalletId: String!
+        $addressType: BitcoinAddressType
+        $addressUsageType: BitcoinAddressUsage
+      ) {
+        createBitcoinAddress(
+          createBitcoinAddressInput: {
+            subWalletIdString: subWalletId
+            addressType: $addressType
+            addressUsageType: $addressUsageType
+          }
+        ) {
+          address {
+            id
+            ... on BitcoinAddress {
+              addressType
+              addressUsageType
+            }
+          }
+        }
+      }
+    `;
+
+    const createBitcoinAddressVariables: CreateBitcoinAddressVariables = {
+      subWalletId,
+      addressType,
+      addressUsageType,
+    };
+
+    return {
+      query: mutation,
+      variables: createBitcoinAddressVariables,
+    };
+  }
+}

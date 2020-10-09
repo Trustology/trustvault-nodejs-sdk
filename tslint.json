@@ -1,0 +1,12 @@
+{
+  "extends": ["tslint:latest", "tslint-config-prettier"],
+  "rules": {
+    "no-console": [true, "log"],
+    "interface-name": [true, "never-prefix"],
+    "no-implicit-dependencies": false,
+    "no-submodule-imports": [true, "deployable", "aws-sdk", "web3", "crypto-common"],
+    "object-literal-sort-keys": false,
+    "max-classes-per-file": false,
+    "ordered-imports": true
+  }
+}
