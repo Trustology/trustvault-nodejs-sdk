@@ -1,6 +1,6 @@
 {
-  "name": "@Trustology/trustvault-nodejs-sdk",
-  "version": "0.1.0",
+  "name": "@trustology/trustvault-nodejs-sdk",
+  "version": "1.0.0",
   "description": "TrustVault Node.js SDK",
   "main": "./index.js",
   "types": "./index.d.ts",

@@ -131,7 +131,7 @@ export class TrustVault {
   }
 
   /**
-   * Send a bitcoin transaction to trustVault
+   * Send a bitcoin transaction to TrustVault
    * @param {string} subWalletId - the unique identifier of the subWallet to send the bitcoin transaction from
    * @param {string} toAddress - the recipient address of the bitcoin transaction
    * @param {IntString} amount - the amount in satoshi
@@ -175,7 +175,7 @@ export class TrustVault {
   }
 
   /**
-   * Send an ethereum to trustVault
+   * Send an ethereum transaction to TrustVault
    * @param {HexString} fromAddress - the address to send the ethereum transaction from (0x prefixed hex string)
    * @param {HexString} toAddress - the recipient address of the ethereum transaction (0x prefixed hex string)
    * @param {IntString} amount - amount in smallest denominator unit of the asset (i.e. wei in ETH)

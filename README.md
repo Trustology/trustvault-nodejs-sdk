@@ -13,19 +13,19 @@ The TrustVault Node.js SDK allows Node.js clients to interact with TrustVault. I
 ## Installation
 
 ```bash
-$ npm i @Trustology/trustvault-nodejs-sdk
+$ npm i @trustology/trustvault-nodejs-sdk
 # Or:
-$ yarn add @Trustology/trustvault-nodejs-sdk
+$ yarn add @trustology/trustvault-nodejs-sdk
 ```
 
 ## Getting Started
 
 ```javascript
 // common
-const { TrustVault } = require("@Trustology/trust-vault-nodejs-sdk");
+const { TrustVault } = require("@trustology/trustvault-nodejs-sdk");
 
 // es6
-import { TrustVault } from "@Trustology/trust-vault-nodejs-sdk";
+import { TrustVault } from "@trustology/trustvault-nodejs-sdk";
 
 // sandbox env
 const trustVaultSandbox = new TrustVault({ apiKey: "<TRUST_VAULT_API_KEY>", environment: "sandbox" });

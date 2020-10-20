@@ -55,7 +55,7 @@ export class TrustVaultGraphQLClient {
       variables,
     );
     if (!result.data) {
-      throw new Error(`Failed to create authorisation request: ${JSON.stringify(result)}`);
+      throw new Error(`Unable to create authorisation request: ${JSON.stringify(result)}`);
     }
 
     return result.data.createChangePolicyRequest.requests[0];
@@ -83,9 +83,13 @@ export class TrustVaultGraphQLClient {
     );
     if (
       !result.data?.createBitcoinTransaction.signData?.transaction ||
-      !result.data.createBitcoinTransaction.requestId
+      !result.data?.createBitcoinTransaction.requestId
     ) {
-      throw new Error(`Failed to create bitcoin transaction: ${JSON.stringify(result)}`);
+      throw new Error(
+        `Unable to create bitcoin transaction. If the issue persists, please contact support. ${JSON.stringify(
+          result,
+        )}`,
+      );
     }
 
     return result.data.createBitcoinTransaction;
@@ -128,7 +132,11 @@ export class TrustVaultGraphQLClient {
     const createEthereumTransactionResponse = result.data?.createEthereumTransaction;
     const signData = createEthereumTransactionResponse?.signData;
     if (!signData || !createEthereumTransactionResponse?.requestId) {
-      throw new Error(`Failed to create ethereum transaction: ${JSON.stringify(result)}`);
+      throw new Error(
+        `Unable to create ethereum transaction. If the issue persists, please contact support. ${JSON.stringify(
+          result,
+        )}`,
+      );
     }
 
     const response: CreateEthereumTransactionResponse = {
@@ -155,7 +163,7 @@ export class TrustVaultGraphQLClient {
       variables,
     );
     if (!result.data) {
-      throw new Error(`Failed to create bitcoin address: ${JSON.stringify(result)}`);
+      throw new Error(`Unable to create bitcoin address: ${JSON.stringify(result)}`);
     }
 
     return result.data.createBitcoinAddress;
@@ -169,7 +177,7 @@ export class TrustVaultGraphQLClient {
 
     const result = await executeMutation<GetSubWalletsGraphQlResponse>(this.clientWithAPIKeyAuthorization, query);
     if (!result.data) {
-      throw new Error(`Failed to get wallets: ${JSON.stringify(result)}`);
+      throw new Error(`Unable to get wallets: ${JSON.stringify(result)}`);
     }
 
     return result.data.user.subWallets.items;
@@ -189,7 +197,7 @@ export class TrustVaultGraphQLClient {
     );
     if (!result.data) {
       throw new Error(
-        `Failed to add signature to requestId ${addSignaturePayload.requestId}: ${JSON.stringify(result)}`,
+        `Unable to add signature to requestId ${addSignaturePayload.requestId}: ${JSON.stringify(result)}`,
       );
     }
 
@@ -205,7 +213,7 @@ export class TrustVaultGraphQLClient {
 
     const result = await executeQuery<GetRequestGraphQlResponse>(this.clientWithAPIKeyAuthorization, query, variables);
     if (!result.data) {
-      throw new Error(`Failed to get request: ${JSON.stringify(result)}`);
+      throw new Error(`Unable to get request: ${JSON.stringify(result)}`);
     }
 
     return result.data.getRequest;

@@ -2,7 +2,6 @@ import { TrustVaultGraphQLClient } from "../../api-client";
 import {
   BitcoinSignData,
   CreateChangePolicyRequestResponse,
-  Currency,
   Environment,
   EthereumSignData,
   HexString,
@@ -76,13 +75,25 @@ export const constructBitcoinTransactionRequest = (
 
 // Ethereum
 
+/**
+ * Create an Ethereum Transaction request
+ * @param fromAddress - the address to send the ethereum transaction from (0x prefixed hex string)
+ * @param toAddress - the recipient address of the ethereum transaction (0x prefixed hex string)
+ * @param amount - amount in smallest denominator unit of the asset (i.e. wei in ETH)
+ * @param assetSymbol - see below for the supported ETH asset symbols
+ * @param speed - optional, the speed of the transaction (defaults to 'MEDIUM')
+ * @param currency - optional, the currency you want the transaction value to be converted to for verification (defaults to 'GBP)
+ *                   "GBP" | "USD" | "EUR" | "AED" | "CHF" | "CNY" | "JPY" + supported tokens (see below)
+ * @param tvGraphQLClient
+ * @see: supported tokens: https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
+ */
 export const createEthereumTransaction = async (
   fromAddress: HexString,
   toAddress: HexString,
   amount: IntString,
   assetSymbol: string,
   speed: TransactionSpeed,
-  currency: Currency,
+  currency: string,
   tvGraphQLClient: TrustVaultGraphQLClient,
 ): Promise<TrustVaultRequest> => {
   const { requestId, signData } = await tvGraphQLClient.createEthereumTransaction(
