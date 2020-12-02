@@ -105,20 +105,27 @@ export class TrustVault {
 
   /**
    * Creates a request to change a wallet's current delegateSchedule with the 1 of 1 delegate schedule of the passed newPublicKey
+   * NOTE:
+   * If sign callback is not given, the policy change request will not be signed and will stay
+   * in `AWAITING_SIGNATURES` status. (i.e. will not be processed until enough valid signatures are collected)
    * @param {string} walletId - the wallet to change the current delegateSchedule
    * @param {HexString} newPublicKey - the publicKey to be the new delegate of the wallet (04 prefixed 128 characters hex string)
-   * @param {SignCallback} sign - signCallback that will be called to sign the computed digest
+   * @param {SignCallback} [sign] - signCallback that will be called to sign the computed digest if given
+   * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses
    */
   public async replacePublicKeyInDefaultSchedule(
     walletId: string,
     newPublicKey: HexString,
-    sign: SignCallback,
+    sign?: SignCallback,
   ): Promise<string> {
     if (!isValidUuid(walletId)) {
       throw new Error("Invalid walletId");
     }
     if (!isValidPublicKey(newPublicKey, NIST_P_256_CURVE)) {
       throw new Error("Invalid publicKey");
+    }
+    if (sign && typeof sign !== "function") {
+      throw new Error("sign callback must be a function");
     }
 
     const policyRequest = await createChangePolicyRequest(
@@ -127,24 +134,31 @@ export class TrustVault {
       this.trustVaultPublicKey,
       this.tvGraphQLClient,
     );
+    if (!sign) {
+      return policyRequest.requestId;
+    }
     return processRequest(policyRequest, sign, this.tvGraphQLClient);
   }
 
   /**
    * Send a bitcoin transaction to TrustVault
+   * NOTE:
+   * If the sign callback is not given, the created transaction request will not be signed and will stay
+   * in `AWAITING_SIGNATURES` status (i.e. will not be submitted to the network until enough valid signatures are collected)
    * @param {string} subWalletId - the unique identifier of the subWallet to send the bitcoin transaction from
    * @param {string} toAddress - the recipient address of the bitcoin transaction
    * @param {IntString} amount - the amount in satoshi
    * @param {"SLOW"|"MEDIUM"|"FAST"} speed - defaults to 'MEDIUM'
-   * @param {SignCallback} sign - signCallback that will be called to sign the computed digest(s)
+   * @param {SignCallback} [sign] - signCallback that will be called to sign the computed digest(s) if given
    * @returns {String} requestId - the unique identifier for the request
+   * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses
    */
   public async sendBitcoin(
     subWalletId: string,
     toAddress: string,
     amount: IntString,
     speed: TransactionSpeed = "MEDIUM",
-    sign: SignCallback,
+    sign?: SignCallback,
   ): Promise<string> {
     // Validate inputs
     if (!isValidSubWalletId(subWalletId)) {
@@ -159,7 +173,7 @@ export class TrustVault {
     if (!isValidTransactionSpeed(speed)) {
       throw new Error("Invalid fromWalletId");
     }
-    if (typeof sign !== "function") {
+    if (sign && typeof sign !== "function") {
       throw new Error("sign callback must be a function");
     }
 
@@ -171,11 +185,17 @@ export class TrustVault {
       this.tvGraphQLClient,
       this.env,
     );
+    if (!sign) {
+      return btcTransactionRequest.requestId;
+    }
     return processRequest(btcTransactionRequest, sign, this.tvGraphQLClient);
   }
 
   /**
    * Send an ethereum transaction to TrustVault
+   * NOTE:
+   * If the sign callback is not given, the created transaction request will not be signed and will stay
+   * in `AWAITING_SIGNATURES` status (i.e. will not be submitted to the network until enough valid signatures are collected)
    * @param {HexString} fromAddress - the address to send the ethereum transaction from (0x prefixed hex string)
    * @param {HexString} toAddress - the recipient address of the ethereum transaction (0x prefixed hex string)
    * @param {IntString} amount - amount in smallest denominator unit of the asset (i.e. wei in ETH)
@@ -183,9 +203,10 @@ export class TrustVault {
    * @param {"SLOW"|"MEDIUM"|"FAST"} speed - optional, the speed of the transaction (defaults to 'MEDIUM')
    * @param {string} currency - optional, the currency you want the transaction value to be converted to for verification (defaults to 'GBP)
    *                   "GBP" | "USD" | "EUR" | "AED" | "CHF" | "CNY" | "JPY" + supported tokens (see below)
-   * @param {SignCallback} sign - signCallback that will be called to sign the computed digest
+   * @param {SignCallback} [sign] - signCallback that will be called to sign the computed digest if given
    * @returns {String} requestId - the unique identifier for the request
-   * @see: supported tokens: https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
+   * @see https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
+   * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses
    */
   public async sendEthereum(
     fromAddress: HexString,
@@ -194,7 +215,7 @@ export class TrustVault {
     assetSymbol: string,
     speed: TransactionSpeed = "MEDIUM",
     currency: string,
-    sign: SignCallback,
+    sign?: SignCallback,
   ): Promise<string> {
     // Validate inputs
     if (!isValidEthereumAddress(fromAddress)) {
@@ -212,6 +233,10 @@ export class TrustVault {
     if (!isValidTransactionSpeed(speed)) {
       throw new Error("Invalid fromWalletId");
     }
+    if (sign && typeof sign !== "function") {
+      throw new Error("sign callback must be a function");
+    }
+
     const ethTransactionRequest = await createEthereumTransaction(
       fromAddress,
       toAddress,
@@ -221,6 +246,9 @@ export class TrustVault {
       currency,
       this.tvGraphQLClient,
     );
+    if (!sign) {
+      return ethTransactionRequest.requestId;
+    }
     return processRequest(ethTransactionRequest, sign, this.tvGraphQLClient);
   }
 
@@ -228,8 +256,8 @@ export class TrustVault {
    * Retrieve the list of subWallets associated with the API key
    */
   public async getSubWallets(): Promise<SubWallet[]> {
-    const wallets: SubWallet[] = await this.tvGraphQLClient.getSubWallets();
-    return wallets;
+    const subWallets: SubWallet[] = await this.tvGraphQLClient.getSubWallets();
+    return subWallets;
   }
 
   /**
@@ -254,5 +282,19 @@ export class TrustVault {
     }
     const request: RequestItem = await this.tvGraphQLClient.getRequest(requestId);
     return request;
+  }
+
+  /**
+   * Cancels a request item associated with the given requestId. If successful, the request will be in `USER_CANCELLED` status
+   * An error will be throw if the request is not in a state that can be cancelled (i.e. not `AWAITING_SIGNATURES`)
+   * @param {string} requestId - the unique identifier for the request
+   * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses
+   */
+  public async cancelRequest(requestId: string): Promise<boolean> {
+    if (!isValidUuid(requestId)) {
+      throw new Error("Invalid requestId");
+    }
+    const requestIdResponse: string = await this.tvGraphQLClient.cancelRequest(requestId);
+    return requestIdResponse ? true : false;
   }
 }

@@ -28,17 +28,20 @@ export interface SubWallet {
   publicKey: HexString;
   trustVaultPublicKeySignature: HexString;
   balances?: BalanceConnection;
+  __typename: "BlockchainSubWallet" | "ExchangeSubWallet";
 }
 
 export interface BalanceConnection {
   items: Balance[];
   nextToken: Nullable<string>;
+  __typename: "BalanceConnection";
 }
 
 export interface Balance {
   asset: Asset;
   amount: Amount;
   available: Amount;
+  __typename: "Balance";
 }
 
 export interface Asset {
@@ -53,23 +56,18 @@ export interface Asset {
   chain: string;
   // The maximum number of decimal place for the asset
   decimalPlace: Integer;
+  __typename: "Asset";
 }
 
 export interface Amount {
-  value: NumString;
+  value: NumString; // could be "NaN" string when failed to get balance
   currency: string;
   timestamp: Nullable<IsoDateString>; // ISO 8601 date format
   in?: Amount;
+  __typename: "Amount";
 }
 
 export type HdWalletPath = [HexString, HexString, HexString, HexString, HexString];
-
-export interface BlockchainWallet extends SubWallet {
-  total: Amount;
-  chain: Chain;
-  publicKey: string;
-  trustVaultPublicKeySignature: string;
-}
 
 export type Chain = "BITCOIN" | "ETHEREUM" | "BINANCE";
 

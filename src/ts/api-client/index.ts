@@ -4,6 +4,8 @@ import {
   AddSignatureVariables,
   BitcoinAddressType,
   BitcoinAddressUsageType,
+  CancelRequestGraphQlResponse,
+  CancelRequestVariables,
   CreateBitcoinAddressGraphQlResponse,
   CreateBitcoinAddressVariables,
   CreateBitcoinTransactionGraphQlResponse,
@@ -104,7 +106,7 @@ export class TrustVaultGraphQLClient {
    * @param speed - optional, the speed of the transaction (defaults to 'MEDIUM')
    * @param currency - optional, the currency you want the transaction value to be converted to for verification (defaults to 'GBP)
    *                   "GBP" | "USD" | "EUR" | "AED" | "CHF" | "CNY" | "JPY" + supported tokens
-   * @see: supported tokens: https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
+   * @see https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
    */
   public async createEthereumTransaction(
     fromAddress: HexString,
@@ -166,7 +168,7 @@ export class TrustVaultGraphQLClient {
       throw new Error(`Unable to create bitcoin address: ${JSON.stringify(result)}`);
     }
 
-    return result.data.createBitcoinAddress;
+    return result.data.createBitcoinAddress.address.id;
   }
 
   /**
@@ -177,7 +179,7 @@ export class TrustVaultGraphQLClient {
 
     const result = await executeMutation<GetSubWalletsGraphQlResponse>(this.clientWithAPIKeyAuthorization, query);
     if (!result.data) {
-      throw new Error(`Unable to get wallets: ${JSON.stringify(result)}`);
+      throw new Error(`Unable to get subWallets: ${JSON.stringify(result)}`);
     }
 
     return result.data.user.subWallets.items;
@@ -217,6 +219,25 @@ export class TrustVaultGraphQLClient {
     }
 
     return result.data.getRequest;
+  }
+
+  /**
+   * Cancels the request for the given requestId
+   * @param requestId
+   */
+  public async cancelRequest(requestId: string): Promise<string> {
+    const { query, variables } = this.cancelRequestMutation(requestId);
+
+    const result = await executeQuery<CancelRequestGraphQlResponse>(
+      this.clientWithAPIKeyAuthorization,
+      query,
+      variables,
+    );
+    if (!result.data?.cancelRequest.requestId) {
+      throw new Error(`Unable to cancel request: ${JSON.stringify(result)}`);
+    }
+
+    return result.data.cancelRequest.requestId;
   }
 
   // Helpers
@@ -335,11 +356,10 @@ export class TrustVaultGraphQLClient {
             items {
               address
               name
-              id: walletId
               subWalletId
               createdAt
               updatedAt
-              ... on BlockchainWallet {
+              ... on BlockchainSubWallet {
                 chain
                 publicKey
                 trustVaultPublicKeySignature
@@ -356,9 +376,6 @@ export class TrustVaultGraphQLClient {
                     value
                     currency
                     timestamp
-                    type
-                    chain
-                    decimalPlace
                   }
                 }
               }
@@ -597,6 +614,24 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * cancelRequestMutation graphQL query
+   * @param requestId
+   */
+  private cancelRequestMutation(requestId: string): GraphQlQueryVariable<GetRequestVariables> {
+    const mutation = `mutation($requestId: String!) {
+      cancelRequest(requestId: $requestId) {
+        requestId
+      }
+    }`;
+    const cancelRequestVariables: CancelRequestVariables = { requestId };
+
+    return {
+      query: mutation,
+      variables: cancelRequestVariables,
+    };
+  }
+
+  /**
    * createBitcoinAddressMutation graphQL query
    * @param subWalletId
    * @param addressType
@@ -615,7 +650,7 @@ export class TrustVaultGraphQLClient {
       ) {
         createBitcoinAddress(
           createBitcoinAddressInput: {
-            subWalletIdString: subWalletId
+            subWalletIdString: $subWalletId
             addressType: $addressType
             addressUsageType: $addressUsageType
           }

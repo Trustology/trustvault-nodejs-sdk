@@ -61,6 +61,10 @@ export interface GetRequestVariables {
   requestId: string;
 }
 
+export interface CancelRequestVariables {
+  requestId: string;
+}
+
 // Response
 
 export interface CreateChangePolicyGraphQlResponse {
@@ -76,7 +80,13 @@ export interface CreateEthereumTransactionGraphQlResponse {
 }
 
 export interface CreateBitcoinAddressGraphQlResponse {
-  createBitcoinAddress: string;
+  createBitcoinAddress: {
+    address: {
+      id: string;
+      addressType: string;
+      addressUsageType: string;
+    };
+  };
 }
 
 export interface GetSubWalletsGraphQlResponse {
@@ -95,4 +105,10 @@ export interface AddSignatureGraphQlResponse {
 
 export interface GetRequestGraphQlResponse {
   getRequest: RequestItem;
+}
+
+export interface CancelRequestGraphQlResponse {
+  cancelRequest: {
+    requestId: string;
+  };
 }

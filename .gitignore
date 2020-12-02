@@ -10,9 +10,10 @@ dist
 
 coverage
 .nyc_output
-.gitlab-ci.yml
 
 bin/env.vars
+
+temp
 
 # input vars file for deployment CI
 input-vars.json

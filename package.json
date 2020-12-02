@@ -1,6 +1,6 @@
 {
   "name": "@trustology/trustvault-nodejs-sdk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "TrustVault Node.js SDK",
   "main": "./index.js",
   "types": "./index.d.ts",
@@ -9,17 +9,20 @@
     "test": "tests"
   },
   "scripts": {
-    "build": "npm run clean && tsc && cp package*.json build",
+    "build": "npm run clean && tsc && cp package*.json build && cp README.md build",
     "clean": "rm -rf build",
     "quality": "tslint --project . --format stylish --fix",
     "quality-check": "tslint --project . --format stylish",
-    "style": "prettier --write 'src/ts/**/*.ts' *.json",
-    "style-check": "prettier --check 'src/ts/**/*.ts' *.json",
+    "style": "prettier --write 'internal/tests/*.ts' 'src/ts/**/*.ts' *.json",
+    "style-check": "prettier --check 'internal/tests/*.ts' 'src/ts/**/*.ts' *.json",
     "test": "mocha --recursive -r ts-node/register './src/ts/**/*.spec.ts'"
   },
   "repository": {
     "type": "git",
     "url": "git@github.com:Trustology/trustvault-nodejs-sdk.git"
+  },
+  "publishConfig": {
+    "@trustology:registry": "https://registry.npmjs.org"
   },
   "author": "Trustology Ltd",
   "license": "MIT",
