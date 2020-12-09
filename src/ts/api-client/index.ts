@@ -19,7 +19,12 @@ import {
   CreateEthereumTransactionVariables,
   GetRequestGraphQlResponse,
   GetRequestVariables,
+  GetSubWalletGraphQlResponse,
+  GetSubWalletOptions,
+  GetSubWalletsConnectionVariables,
   GetSubWalletsGraphQlResponse,
+  GetSubWalletsOptions,
+  GetSubWalletVariables,
   GraphQlQueryVariable,
   HdWalletPath,
   HdWalletPathObj,
@@ -27,6 +32,7 @@ import {
   IntString,
   PolicySchedule,
   RequestItem,
+  ResultConnection,
   SubWallet,
   TransactionSpeed,
   TrustVaultGraphQLClientOptions,
@@ -174,15 +180,60 @@ export class TrustVaultGraphQLClient {
   /**
    * Retrieve the list of subWallets available
    */
-  public async getSubWallets(): Promise<SubWallet[]> {
-    const { query } = this.getSubWalletsQuery();
+  public async getSubWallets(includeBalances?: boolean): Promise<SubWallet[]> {
+    const { query } = this.getSubWalletsQuery(includeBalances);
 
-    const result = await executeMutation<GetSubWalletsGraphQlResponse>(this.clientWithAPIKeyAuthorization, query);
+    const result = await executeQuery<GetSubWalletsGraphQlResponse>(this.clientWithAPIKeyAuthorization, query);
     if (!result.data) {
-      throw new Error(`Unable to get subWallets: ${JSON.stringify(result)}`);
+      throw new Error(`Unable to get sub-wallets: ${JSON.stringify(result)}`);
     }
 
     return result.data.user.subWallets.items;
+  }
+
+  /**
+   * Retrieve the list of subWallets available
+   */
+  public async getSubWalletsConnection(options: GetSubWalletsOptions): Promise<ResultConnection<SubWallet[]>> {
+    const { limit, nextToken, includeBalances } = options;
+    const { query, variables } = this.getSubWalletsQuery(includeBalances, limit, nextToken);
+
+    const result = await executeQuery<GetSubWalletsGraphQlResponse>(
+      this.clientWithAPIKeyAuthorization,
+      query,
+      variables,
+    );
+    if (!result.data) {
+      throw new Error(`Unable to get sub-wallets: ${JSON.stringify(result)}`);
+    }
+
+    return {
+      items: result.data.user.subWallets.items,
+      nextToken: result.data.user.subWallets.nextToken,
+      errors: result.errors,
+    };
+  }
+
+  /**
+   * Retrieve a Single subWallets
+   */
+  public async getSubWallet(subWalletId: string, options: GetSubWalletOptions): Promise<SubWallet> {
+    const { includeBalances } = options;
+    if (subWalletId) {
+      const { query, variables } = this.getSubWalletQuery(subWalletId, includeBalances);
+
+      const result = await executeQuery<GetSubWalletGraphQlResponse>(
+        this.clientWithAPIKeyAuthorization,
+        query,
+        variables,
+      );
+      if (!result.data) {
+        throw new Error(`Unable to get sub-wallet for ${subWalletId}: ${JSON.stringify(result)}`);
+      }
+      return result.data.user.subWallet;
+    } else {
+      throw new Error(`You must pass a subWalletId`);
+    }
   }
 
   /**
@@ -346,13 +397,67 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * getSubWalletsQuery graphQL query with balances
+   */
+  private getSubWalletQuery(subWalletId: string, includeBalances?: boolean): GraphQlQueryVariable {
+    const query = `
+      query getSubWallet($subWalletId: String!) {
+        user {
+          subWallet(subWalletId: $subWalletId) {
+            name
+            id
+            createdAt
+            address
+            updatedAt
+            ${
+              includeBalances
+                ? `
+                balances {
+                  items {
+                    asset {
+                      symbol
+                      displaySymbol
+                      name
+                      type
+                      chain
+                      decimalPlace
+                    }
+                    amount {
+                      value
+                      currency
+                      timestamp
+                    }
+                  }
+                }`
+                : ``
+            }
+          }
+        }
+      }
+    `;
+    const getSubWalletVariables: GetSubWalletVariables = {
+      subWalletId,
+    };
+
+    return {
+      query,
+      variables: getSubWalletVariables,
+    };
+  }
+
+  /**
    * getSubWalletsQuery graphQL query
    */
-  private getSubWalletsQuery(): GraphQlQueryVariable {
+  private getSubWalletsQuery(includeBalances?: boolean, limit?: number, nextToken?: string): GraphQlQueryVariable {
+    const variables: GetSubWalletsConnectionVariables = {
+      limit: limit ? limit : 10,
+      nextToken: nextToken ? nextToken : null,
+    };
+
     const query = `
-      query getSubWallets {
+      query getSubWallets($limit: Int, $nextToken: String) {
         user {
-          subWallets {
+          subWallets(limit: $limit, nextToken: $nextToken) {
             items {
               address
               name
@@ -365,12 +470,18 @@ export class TrustVaultGraphQLClient {
                 trustVaultPublicKeySignature
                 __typename
               }
+              ${
+                includeBalances
+                  ? `
               balances {
                 items {
                   asset {
                     symbol
                     displaySymbol
                     name
+                    type
+                    chain
+                    decimalPlace
                   }
                   amount {
                     value
@@ -378,6 +489,8 @@ export class TrustVaultGraphQLClient {
                     timestamp
                   }
                 }
+              }`
+                  : ``
               }
             }
             nextToken
@@ -385,7 +498,10 @@ export class TrustVaultGraphQLClient {
         }
       }
     `;
-    return { query };
+    return {
+      query,
+      variables,
+    };
   }
 
   /**

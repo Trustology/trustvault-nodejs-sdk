@@ -53,7 +53,7 @@ export const isValidEthereumAddress = (address: string): boolean => {
   }
 };
 
-export const isValidIntString = (value: any): boolean => Number.isInteger(Number(value));
+export const isValidIntString = (value: any): boolean => Number.isInteger(Number(value) && typeof value === "string");
 
 export const isValidTransactionSpeed = (speed: any): boolean => TRANSACTION_SPEED.includes(speed);
 

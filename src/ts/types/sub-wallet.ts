@@ -1,5 +1,4 @@
-// from codegen
-
+import { GraphQLError } from "graphql";
 import { HexString, Integer, IsoDateString, Nullable, NumString } from "./data";
 
 export const EXCHANGE_TYPES = ["BITMEX", "COINBASE_PRIME", "KRAKEN", "LUNO", "VALR", "TAGOMI"] as const;
@@ -14,6 +13,22 @@ export interface SubWalletId {
   index: Integer;
 }
 
+export interface PagedOptions {
+  nextToken?: string;
+  limit?: number;
+}
+export interface GetSubWalletsOptions extends PagedOptions {
+  includeBalances?: boolean;
+}
+
+export interface GetSubWalletOptions {
+  includeBalances?: boolean;
+}
+export interface ResultConnection<T> {
+  nextToken: Nullable<string>;
+  items: T;
+  errors?: ReadonlyArray<GraphQLError>;
+}
 export interface SubWallet {
   address: string;
   name: string;

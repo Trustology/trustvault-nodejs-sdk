@@ -14,9 +14,12 @@ import { NIST_P_256_CURVE } from "./static-data";
 import {
   AllWebhookMessages,
   Environment,
+  GetSubWalletOptions,
+  GetSubWalletsOptions,
   HexString,
   IntString,
   RequestItem,
+  ResultConnection,
   SignCallback,
   SubWallet,
   TransactionSpeed,
@@ -168,7 +171,7 @@ export class TrustVault {
       throw new Error("Invalid toAddress");
     }
     if (!isValidIntString(amount)) {
-      throw new Error("Invalid amount");
+      throw new Error("Invalid amount, must be an integer string");
     }
     if (!isValidTransactionSpeed(speed)) {
       throw new Error("Invalid fromWalletId");
@@ -254,10 +257,33 @@ export class TrustVault {
 
   /**
    * Retrieve the list of subWallets associated with the API key
+   * @deprecated("Use getSubWalletsConnection to allow for pagination")
    */
   public async getSubWallets(): Promise<SubWallet[]> {
-    const subWallets: SubWallet[] = await this.tvGraphQLClient.getSubWallets();
-    return subWallets;
+    const subWallets: SubWallet[] = await this.tvGraphQLClient.getSubWallets(true); // default to returning balances as non-breaking change
+    return this.addWalletIdToWallet(subWallets);
+  }
+
+  /**
+   * Retrieve the list of sub-wallets associated with the API key which can be paged
+   * @param  {GetSubWalletsOptions={}} options including `limit` and `nextToken` for paging and `includeBalances` if balances are required
+   * @returns Promise<ResultConnection<SubWallet[]>>
+   */
+  public async getSubWalletsConnection(options: GetSubWalletsOptions = {}): Promise<ResultConnection<SubWallet[]>> {
+    const subWalletsConnection = await this.tvGraphQLClient.getSubWalletsConnection(options);
+    subWalletsConnection.items = this.addWalletIdToWallet(subWalletsConnection.items);
+    return subWalletsConnection;
+  }
+
+  /**
+   * Retrieve a single subWallet
+   * @param  {string} subWalletId- The subWalletId of the sub-wallet to return
+   * @param  {GetSubWalletOptions={}} options including `includeBalances` if balances are required for this sub-wallet
+   * @returns Promise<SubWallet>
+   */
+  public async getSubWallet(subWalletId: string, options: GetSubWalletOptions = {}): Promise<SubWallet> {
+    const subWallet: SubWallet = await this.tvGraphQLClient.getSubWallet(subWalletId, options);
+    return this.addWalletIdToWallet([subWallet])[0];
   }
 
   /**
@@ -296,5 +322,14 @@ export class TrustVault {
     }
     const requestIdResponse: string = await this.tvGraphQLClient.cancelRequest(requestId);
     return requestIdResponse ? true : false;
+  }
+
+  private addWalletIdToWallet(wallets: SubWallet[]): SubWallet[] {
+    return wallets.map((wallet) => {
+      return {
+        ...wallet,
+        walletId: wallet.subWalletId.split("/")[0],
+      };
+    });
   }
 }

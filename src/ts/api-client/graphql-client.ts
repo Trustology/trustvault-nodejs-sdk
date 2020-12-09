@@ -3,6 +3,7 @@ import { ApolloClient } from "apollo-client";
 import { createHttpLink } from "apollo-link-http";
 import { AUTH_TYPE, createAppSyncLink } from "aws-appsync";
 import { config, Credentials } from "aws-sdk";
+import * as fs from "fs";
 import * as gql from "graphql-tag";
 import * as http from "http";
 import * as https from "https";
@@ -17,6 +18,21 @@ const AGENT_ARGS = {
 };
 const HTTP_AGENT = new http.Agent(AGENT_ARGS);
 const HTTPS_AGENT = new https.Agent(AGENT_ARGS);
+
+let packageJson;
+try {
+  // for in parent dir when built
+  packageJson = fs.readFileSync("../package.json", "utf8");
+} catch (e) {
+  // look in local dir for dev
+  packageJson = fs.readFileSync("./package.json", "utf8");
+}
+
+const { version } = JSON.parse(packageJson);
+// Don't use this as it caused TS to complile a different directory structure
+// import { version } from "../../../package.json";
+
+const trustVaultSDKVerson = `TrustVaultSDK/${version}`;
 
 /**
  * Create an ApolloClient that connects to the given AppSync url. By default this method will use IAM security to access
@@ -91,10 +107,23 @@ export const createAppSyncClient = (
 
 export const executeMutation = async <T = any>(client: AppSyncClient, mutation: string, variables?: {}) => {
   return client.mutate<T>({
+    context: {
+      headers: {
+        "x-trust-user-agent": trustVaultSDKVerson,
+      },
+    },
     mutation: gql.default(mutation),
     variables,
   });
 };
 
 export const executeQuery = async <T = any>(client: AppSyncClient, query: string, variables?: {}) =>
-  client.query<T>({ query: gql.default(query), variables });
+  client.query<T>({
+    context: {
+      headers: {
+        "x-trust-user-agent": trustVaultSDKVerson,
+      },
+    },
+    query: gql.default(query),
+    variables,
+  });

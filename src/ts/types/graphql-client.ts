@@ -1,5 +1,5 @@
 import { BitcoinAddressType, BitcoinAddressUsageType } from "./address";
-import { HexString, IntString } from "./data";
+import { HexString, IntString, Nullable } from "./data";
 import { CreateChangePolicyRequestResponse, PolicySchedule } from "./policy";
 import { RequestItem } from "./request";
 import { AddSignaturePayload } from "./signature";
@@ -27,6 +27,15 @@ export interface GraphQlQueryVariable<T = { [key: string]: any }> {
 export interface CreateChangePolicyVariables {
   walletId: string;
   delegateSchedules: PolicySchedule[];
+}
+
+export interface GetSubWalletVariables {
+  subWalletId: string;
+}
+
+export interface GetSubWalletsConnectionVariables {
+  limit?: number;
+  nextToken: Nullable<string>;
 }
 
 export interface CreateBitcoinTransactionVariables {
@@ -93,7 +102,14 @@ export interface GetSubWalletsGraphQlResponse {
   user: {
     subWallets: {
       items: SubWallet[];
+      nextToken: Nullable<string>;
     };
+  };
+}
+
+export interface GetSubWalletGraphQlResponse {
+  user: {
+    subWallet: SubWallet;
   };
 }
 
