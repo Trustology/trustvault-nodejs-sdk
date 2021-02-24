@@ -406,6 +406,7 @@ export class TrustVaultGraphQLClient {
           subWallet(subWalletId: $subWalletId) {
             name
             id
+            subWalletId
             createdAt
             address
             updatedAt
