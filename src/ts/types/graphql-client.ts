@@ -52,7 +52,9 @@ export interface CreateEthereumTransactionVariables {
   to: HexString;
   value: IntString;
   assetSymbol: string;
-  speed: TransactionSpeed;
+  speed?: TransactionSpeed;
+  gasPrice?: string;
+  gasLimit?: string;
   currency: string;
   sendToNetworkWhenSigned: boolean;
   sendToDevicesForSigning: boolean;

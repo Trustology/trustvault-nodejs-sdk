@@ -3,10 +3,14 @@ import { ec as EC } from "elliptic";
 import { isValidChecksumAddress } from "ethereumjs-util";
 import {
   Environment,
+  HexString,
+  IntString,
+  SignCallback,
   SignData,
   SubWalletType,
   SUB_WALLET_TYPES,
   TransactionDigestData,
+  TransactionSpeed,
   TRANSACTION_SPEED,
 } from "../types";
 
@@ -42,6 +46,7 @@ export const isValidBitcoinAddress = (address: string, env: Environment = "produ
 };
 
 export const isValidEthereumAddress = (address: string): boolean => {
+  // const address = removeNull<String>(addressInput);
   if (!/^(0x)?[0-9a-f]{40}$/i.test(address)) {
     // check if it has the basic requirements of an address
     return false;
@@ -53,9 +58,76 @@ export const isValidEthereumAddress = (address: string): boolean => {
   }
 };
 
+const removeNull = <T>(input: T) => (input === null ? undefined : input);
+
+export const validateInputs = (
+  fromAddress: HexString,
+  toAddress: HexString,
+  amount: IntString,
+  assetSymbol: string,
+  currency: string,
+  speed?: TransactionSpeed,
+  gasPrice?: string,
+  gasLimit?: string,
+  sign?: SignCallback,
+) => {
+  // Validate inputs
+  if (!isValidEthereumAddress(fromAddress)) {
+    throw new Error("Invalid fromAddress");
+  }
+  if (!isValidEthereumAddress(toAddress)) {
+    throw new Error("Invalid toAddress");
+  }
+  if (!isValidIntString(amount)) {
+    throw new Error(`Invalid amount, must be string e.g. "100"`);
+  }
+  if (typeof assetSymbol !== "string") {
+    throw new Error("Invalid assetSymbol");
+  }
+  if (!isValidGasLimit(gasLimit)) {
+    throw new Error(`Invalid gasLimit. Must be string value of at least "21000"`);
+  }
+  if (!isValidGasPrice(gasPrice, speed)) {
+    throw new Error("You must provide either speed or gasPrice in wei as a string");
+  }
+
+  if (sign && typeof sign !== "function") {
+    throw new Error("sign callback must be a function");
+  }
+};
+
 export const isValidIntString = (value: any): boolean => Number.isInteger(Number(value)) && typeof value === "string";
 
 export const isValidTransactionSpeed = (speed: any): boolean => TRANSACTION_SPEED.includes(speed);
+
+export const isValidGasLimit = (gasLimitInput?: string) => {
+  const gasLimit = removeNull(gasLimitInput);
+  if (gasLimit) {
+    if (parseInt(gasLimit, 10) >= 21_000) {
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    return true;
+  }
+};
+
+export const isValidGasPrice = (gasPrice?: string, speed?: TransactionSpeed) => {
+  let valid = false;
+  if (gasPrice || speed) {
+    if (gasPrice !== undefined) {
+      if (parseInt(gasPrice, 10) > 0) {
+        valid = true;
+      }
+    } else if (speed) {
+      if (TRANSACTION_SPEED.includes(speed)) {
+        valid = true;
+      }
+    }
+  }
+  return valid;
+};
 
 export const isValidSubWalletId = (subWalletId: any): boolean => {
   if (typeof subWalletId !== "string") {

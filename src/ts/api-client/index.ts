@@ -121,6 +121,8 @@ export class TrustVaultGraphQLClient {
     assetSymbol: string,
     speed: TransactionSpeed = "MEDIUM",
     currency: string = "GBP",
+    gasPrice?: string,
+    gasLimit?: string,
   ): Promise<CreateEthereumTransactionResponse> {
     const { query, variables } = this.createEthereumTransactionMutation(
       fromAddress,
@@ -128,6 +130,8 @@ export class TrustVaultGraphQLClient {
       amount,
       assetSymbol,
       speed,
+      gasPrice,
+      gasLimit,
       currency,
     );
 
@@ -620,6 +624,8 @@ export class TrustVaultGraphQLClient {
    * @param amount - amount in smallest denominator unit of the asset (i.e. wei in ETH)
    * @param assetSymbol - see below for the supported ETH asset symbols
    * @param speed - optional, the speed of the transaction (defaults to 'MEDIUM')
+   * @param gasPrice - optional, the gasPrice to set for the transaction
+   * @param gasLimit - optional, the gasLimit to set for the transaction
    * @param currency - optional, the currency you want the transaction value to be converted to for verification (defaults to 'GBP)
    *                   "GBP" | "USD" | "EUR" | "AED" | "CHF" | "CNY" | "JPY" + supported tokens (see below)
    */
@@ -629,6 +635,8 @@ export class TrustVaultGraphQLClient {
     value: IntString,
     assetSymbol: string,
     speed: TransactionSpeed = "MEDIUM",
+    gasPrice?: IntString,
+    gasLimit?: IntString,
     currency: string = "GBP",
     sendToDevicesForSigning: boolean = true,
     sendToNetworkWhenSigned: boolean = true,
@@ -643,6 +651,8 @@ export class TrustVaultGraphQLClient {
           $currency: String
           $sendToNetworkWhenSigned: Boolean
           $sendToDevicesForSigning: Boolean
+          $gasLimit: String
+          $gasPrice: String
       ) {
         createEthereumTransaction(
           createTransactionInput: {
@@ -652,6 +662,8 @@ export class TrustVaultGraphQLClient {
               to: $to
               value: $value
               speed: $speed
+              gasLimit: $gasLimit
+              gasPrice: $gasPrice
             }
             source: "API"
             currency: $currency
@@ -698,6 +710,8 @@ export class TrustVaultGraphQLClient {
       value,
       assetSymbol,
       speed,
+      gasLimit,
+      gasPrice,
       currency,
       sendToNetworkWhenSigned,
       sendToDevicesForSigning,

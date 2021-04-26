@@ -95,6 +95,8 @@ export const createEthereumTransaction = async (
   speed: TransactionSpeed,
   currency: string,
   tvGraphQLClient: TrustVaultGraphQLClient,
+  gasPrice?: string,
+  gasLimit?: string,
 ): Promise<TrustVaultRequest> => {
   const { requestId, signData } = await tvGraphQLClient.createEthereumTransaction(
     fromAddress,
@@ -103,6 +105,8 @@ export const createEthereumTransaction = async (
     assetSymbol,
     speed,
     currency,
+    gasPrice,
+    gasLimit,
   );
   const ethereumTransactionRequest = constructEthereumTransactionRequest(requestId, signData);
 

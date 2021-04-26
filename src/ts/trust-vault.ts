@@ -28,12 +28,12 @@ import {
 } from "./types";
 import {
   isValidBitcoinAddress,
-  isValidEthereumAddress,
   isValidIntString,
   isValidPublicKey,
   isValidSubWalletId,
   isValidTransactionSpeed,
   isValidUuid,
+  validateInputs,
 } from "./utils";
 
 export class TrustVault {
@@ -219,26 +219,10 @@ export class TrustVault {
     speed: TransactionSpeed = "MEDIUM",
     currency: string,
     sign?: SignCallback,
+    gasPrice?: string,
+    gasLimit?: string,
   ): Promise<string> {
-    // Validate inputs
-    if (!isValidEthereumAddress(fromAddress)) {
-      throw new Error("Invalid fromAddress");
-    }
-    if (!isValidEthereumAddress(toAddress)) {
-      throw new Error("Invalid toAddress");
-    }
-    if (!isValidIntString(amount)) {
-      throw new Error("Invalid amount");
-    }
-    if (typeof assetSymbol !== "string") {
-      throw new Error("Invalid assetSymbol");
-    }
-    if (!isValidTransactionSpeed(speed)) {
-      throw new Error("Invalid fromWalletId");
-    }
-    if (sign && typeof sign !== "function") {
-      throw new Error("sign callback must be a function");
-    }
+    validateInputs(fromAddress, toAddress, amount, assetSymbol, currency, speed, gasPrice, gasLimit, sign);
 
     const ethTransactionRequest = await createEthereumTransaction(
       fromAddress,
@@ -248,6 +232,8 @@ export class TrustVault {
       speed,
       currency,
       this.tvGraphQLClient,
+      gasPrice,
+      gasLimit,
     );
     if (!sign) {
       return ethTransactionRequest.requestId;

@@ -1,3 +1,4 @@
+import { IsoDateString, NumString } from "./data";
 import { PolicyTemplate } from "./policy";
 import { SignData } from "./signature";
 import { SubWalletId } from "./sub-wallet";
@@ -26,8 +27,7 @@ export type PolicyChangeRequestWebhookMessage = WebhookMessage<
 
 // Bitcoin
 
-export interface BitcoinTransactionCreatedEvent
-  extends WebhookTransactionCreated<BitcoinAssetSymbol, BitcoinChainSymbol, BitcoinSignData> {
+export interface BitcoinTransactionCreatedEvent extends WebhookTransactionCreated<BitcoinChainSymbol, BitcoinSignData> {
   fee: number;
 }
 
@@ -42,18 +42,12 @@ export type BitcoinChainSymbol = "BITCOIN";
 
 // Ethereum
 
-export type EthereumTransactionCreated = WebhookTransactionCreated<
-  EthereumAssetSymbol,
-  EthereumChainSymbol,
-  EthereumSignData
->;
+export type EthereumTransactionCreated = WebhookTransactionCreated<EthereumChainSymbol, EthereumSignData>;
 
 export type EthereumTransactionWebhookMessage = WebhookMessage<
   EthereumTransactionCreated,
   "ETHEREUM_TRANSACTION_CREATED"
 >;
-
-export type EthereumAssetSymbol = "ETH";
 
 export type EthereumChainSymbol = "ETHEREUM";
 
@@ -64,15 +58,31 @@ export interface WebhookCreatedEvent<T, U> {
   signData: U;
   requestId: string;
 }
+interface Amount {
+  value: NumString;
+  currency: string;
+  timestamp?: IsoDateString;
+}
 
-export interface WebhookTransactionCreated<T, U, V> {
-  assetSymbol: T;
+export interface TransferValueDefinition {
+  type: TransferValueDefinitionType;
+  transferAmount?: Amount; // undefined if UNABLE_TO_PRICE
+  convertedAmount?: ConvertedCurrency; // undefined if UNABLE_TO_PRICE
+}
+type TransferValueDefinitionType = "BTC" | "ETH" | "ERC20" | "UNABLE_TO_PRICE";
+export interface ConvertedCurrency {
+  [currency: string]: Amount;
+}
+
+export interface WebhookTransactionCreated<U, V> {
+  assetSymbol: string;
   chain: U;
   signData: V;
   requestId: string;
   trustId: string;
   subWalletId: SubWalletId;
   subWalletIdString: string;
+  transferValueDefinition: TransferValueDefinition;
 }
 
 export type AllWebhookTransactionCreatedEvents =

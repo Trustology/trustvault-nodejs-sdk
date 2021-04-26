@@ -91,6 +91,7 @@ export interface EthTransaction {
   r?: HexString;
   s?: HexString;
   v?: HexString;
+  decodedInput?: EthDecodedData;
 }
 
 export interface EthTransactionInput extends EthTransaction {
@@ -126,4 +127,24 @@ export interface EthTransactionDataDetails {
 export interface TxDigestPathInt {
   digest: string;
   path: number[];
+}
+
+export interface EthDecodedData {
+  id: string;
+  signature: string;
+  params: EthDecodedParameter[];
+}
+
+export type EthDecodedParameter = EthDecodedStringParameter | EthDecodedArrayParameter;
+
+export interface EthDecodedStringParameter {
+  name?: string;
+  type: string;
+  value: string;
+}
+
+export interface EthDecodedArrayParameter {
+  name?: string;
+  type: string;
+  items: EthDecodedParameter[];
 }
