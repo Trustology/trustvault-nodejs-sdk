@@ -85,6 +85,8 @@ export const constructBitcoinTransactionRequest = (
  * @param currency - optional, the currency you want the transaction value to be converted to for verification (defaults to 'GBP)
  *                   "GBP" | "USD" | "EUR" | "AED" | "CHF" | "CNY" | "JPY" + supported tokens (see below)
  * @param tvGraphQLClient
+ * @param gasPrice - optional, the gasPrice to set for the transaction, decimal integer string in WEI
+ * @param gasLimit - optional, the gasLimit to set for the transaction, decimal integer string
  * @see https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
  */
 export const createEthereumTransaction = async (
@@ -111,7 +113,7 @@ export const createEthereumTransaction = async (
   const ethereumTransactionRequest = constructEthereumTransactionRequest(requestId, signData);
 
   // validate the created transaction request against inputs
-  ethereumTransactionRequest.request.validate(fromAddress, toAddress, amount);
+  ethereumTransactionRequest.request.validate(toAddress, amount);
 
   return ethereumTransactionRequest;
 };

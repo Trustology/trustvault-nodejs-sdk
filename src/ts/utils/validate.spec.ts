@@ -97,7 +97,7 @@ describe("Input Validation", () => {
       ),
     ).to.throw(/You must provide either speed or gasPrice in wei as a string/);
   });
-  it("Should validate gasList", () => {
+  it("Should validate gasLimit", () => {
     expect(isValidGasLimit(undefined), "undefined failed").to.equal(true);
     expect(isValidGasLimit(null as any), "null failed").to.equal(true);
     expect(isValidGasLimit("0"), "0 failed").to.equal(false);

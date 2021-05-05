@@ -207,6 +207,8 @@ export class TrustVault {
    * @param {string} currency - optional, the currency you want the transaction value to be converted to for verification (defaults to 'GBP)
    *                   "GBP" | "USD" | "EUR" | "AED" | "CHF" | "CNY" | "JPY" + supported tokens (see below)
    * @param {SignCallback} [sign] - signCallback that will be called to sign the computed digest if given
+   * @param gasPrice - optional, the gasPrice to set for the transaction, decimal integer string in WEI
+   * @param gasLimit - optional, the gasLimit to set for the transaction, decimal integer string
    * @returns {String} requestId - the unique identifier for the request
    * @see https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
    * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses

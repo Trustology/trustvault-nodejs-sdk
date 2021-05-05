@@ -60,18 +60,15 @@ export class EthereumTransaction implements RequestClass {
    * Verifies the input and the output change address is as expected
    * @throws - throws an error input and the output change address is as expected
    */
-  public validate(expectedFromAddress: HexString, expectedToAddress: HexString, expectedAmount: IntString): boolean {
+  public validate(expectedToAddress: HexString, expectedAmount: IntString): boolean {
     let toAddress = this.to;
-    let fromAddress = this.fromAddress;
     let value = this.value;
     const isErc20Transaction = Boolean(this.data);
 
     if (isErc20Transaction) {
       // get the toAddress in the data field;
-      ({ fromAddress, toAddress, value } = this.getErc20TransactionDataDetails());
-    }
-    if (fromAddress !== expectedFromAddress) {
-      throw new Error("Transaction from address is different from the expected from address");
+      ({ toAddress, value } = this.getErc20TransactionDataDetails());
+      value = String(parseInt(value, 16));
     }
     if (toAddress !== expectedToAddress) {
       throw new Error("Transaction recipient address is different from the expected to address");
@@ -84,18 +81,21 @@ export class EthereumTransaction implements RequestClass {
   }
 
   /**
-   * method - transferFrom(address from, address to, uint tokens)
-   * data - 4 bytes / 32 bytes / 32 bytes / 32 bytes
+   * method - transfer(address to, unit256 tokens)
+   * data - 4 bytes / 32 bytes / 32 bytes
    */
   private getErc20TransactionDataDetails(): EthTransactionDataDetails {
     if (!this.data) {
       throw new Error("Transaction data field missing");
     }
-    return {
-      fromAddress: toChecksumAddress("0x" + this.data.slice(34, 74)),
-      toAddress: toChecksumAddress("0x" + this.data.slice(98, 138)),
-      value: this.data.slice(138, 202),
-    };
+    // transfer is only supported
+    if (this.data.slice(0, 10) === "0xa9059cbb") {
+      return {
+        toAddress: toChecksumAddress("0x" + this.data.slice(34, 74)),
+        value: this.data.slice(75, 139),
+      };
+    }
+    throw new Error("Could not validate transaction as it was not for a transfer(adddress to, unit256 tokens)");
   }
 
   private constructRawTransaction(): EthRawTransaction {

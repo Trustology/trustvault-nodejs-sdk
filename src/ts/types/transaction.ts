@@ -119,7 +119,6 @@ export interface EthRawTransaction {
 }
 
 export interface EthTransactionDataDetails {
-  fromAddress: HexString;
   toAddress: HexString;
   value: HexString;
 }
