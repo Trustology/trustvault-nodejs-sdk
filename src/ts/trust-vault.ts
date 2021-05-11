@@ -17,6 +17,7 @@ import {
   GetSubWalletOptions,
   GetSubWalletsOptions,
   HexString,
+  Integer,
   IntString,
   RequestItem,
   ResultConnection,
@@ -209,6 +210,7 @@ export class TrustVault {
    * @param {SignCallback} [sign] - signCallback that will be called to sign the computed digest if given
    * @param gasPrice - optional, the gasPrice to set for the transaction, decimal integer string in WEI
    * @param gasLimit - optional, the gasLimit to set for the transaction, decimal integer string
+   * @param nonce - optional, the integer nonce for this transaction. Use with caution.
    * @returns {String} requestId - the unique identifier for the request
    * @see https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
    * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses
@@ -223,8 +225,9 @@ export class TrustVault {
     sign?: SignCallback,
     gasPrice?: string,
     gasLimit?: string,
+    nonce?: Integer,
   ): Promise<string> {
-    validateInputs(fromAddress, toAddress, amount, assetSymbol, currency, speed, gasPrice, gasLimit, sign);
+    validateInputs(fromAddress, toAddress, amount, assetSymbol, currency, speed, gasPrice, gasLimit, nonce, sign);
 
     const ethTransactionRequest = await createEthereumTransaction(
       fromAddress,
@@ -236,6 +239,7 @@ export class TrustVault {
       this.tvGraphQLClient,
       gasPrice,
       gasLimit,
+      nonce,
     );
     if (!sign) {
       return ethTransactionRequest.requestId;

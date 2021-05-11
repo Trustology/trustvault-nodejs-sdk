@@ -29,6 +29,7 @@ import {
   HdWalletPath,
   HdWalletPathObj,
   HexString,
+  Integer,
   IntString,
   PolicySchedule,
   RequestItem,
@@ -39,6 +40,7 @@ import {
 } from "../types";
 import { AppSyncClient, createAppSyncClient, executeMutation, executeQuery } from "./graphql-client";
 
+/* Private API. Use at your own risk, liable to change */
 export class TrustVaultGraphQLClient {
   private clientWithAPIKeyAuthorization: AppSyncClient;
 
@@ -70,6 +72,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * Create a request to send a bitcoin transaction
    * @param subWalletId
    * @param toAddress
@@ -104,6 +107,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * Create a request to send an ethereum transaction
    * @param fromAddress - the address to send the ethereum transaction from (0x prefixed hex string)
    * @param toAddress - the recipient address of the ethereum transaction (0x prefixed hex string)
@@ -112,6 +116,9 @@ export class TrustVaultGraphQLClient {
    * @param speed - optional, the speed of the transaction (defaults to 'MEDIUM')
    * @param currency - optional, the currency you want the transaction value to be converted to for verification (defaults to 'GBP)
    *                   "GBP" | "USD" | "EUR" | "AED" | "CHF" | "CNY" | "JPY" + supported tokens
+   * @param gasPrice - optional, the gasPrice to set for the transaction, decimal integer string in WEI
+   * @param gasLimit - optional, the gasLimit to set for the transaction, decimal integer string
+   * @param nonce - optional, the nonce for this transaction. Use with caution.
    * @see https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
    */
   public async createEthereumTransaction(
@@ -123,6 +130,7 @@ export class TrustVaultGraphQLClient {
     currency: string = "GBP",
     gasPrice?: string,
     gasLimit?: string,
+    nonce?: Integer,
   ): Promise<CreateEthereumTransactionResponse> {
     const { query, variables } = this.createEthereumTransactionMutation(
       fromAddress,
@@ -133,6 +141,7 @@ export class TrustVaultGraphQLClient {
       gasPrice,
       gasLimit,
       currency,
+      nonce,
     );
 
     const result = await executeMutation<CreateEthereumTransactionGraphQlResponse>(
@@ -163,6 +172,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * Create a new bitcoin receive address for the given subWalletId
    * @param subWalletId
    */
@@ -182,6 +192,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * Retrieve the list of subWallets available
    */
   public async getSubWallets(includeBalances?: boolean): Promise<SubWallet[]> {
@@ -196,6 +207,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * Retrieve the list of subWallets available
    */
   public async getSubWalletsConnection(options: GetSubWalletsOptions): Promise<ResultConnection<SubWallet[]>> {
@@ -219,6 +231,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * Retrieve a Single subWallets
    */
   public async getSubWallet(subWalletId: string, options: GetSubWalletOptions): Promise<SubWallet> {
@@ -241,6 +254,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * Add a signature to the given requestId
    * @param addSignaturePayload
    */
@@ -262,6 +276,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * Retrieves the request for the given requestId
    * @param requestId
    */
@@ -277,6 +292,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * Cancels the request for the given requestId
    * @param requestId
    */
@@ -298,6 +314,7 @@ export class TrustVaultGraphQLClient {
   // Helpers
 
   /**
+   * Private API: Use at your own risk
    * Creates a one of one (1 delegate / 1 quorum) delegate policy schedule
    * @param newDelegatePublicKey
    */
@@ -311,6 +328,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * Converts the a hdWalletPath object to a hdWalletPath array format
    * @param hdWalletPathObj
    */
@@ -322,6 +340,7 @@ export class TrustVaultGraphQLClient {
   // Mutation/Query methods
 
   /**
+   * Private API: Use at your own risk
    * addSignatureMutation graphQL query
    * @param addSignaturePayload
    */
@@ -350,6 +369,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * createChangePolicyRequestMutation graphQL query
    * @param walletId
    * @param newDelegatePublicKey
@@ -401,6 +421,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * getSubWalletsQuery graphQL query with balances
    */
   private getSubWalletQuery(subWalletId: string, includeBalances?: boolean): GraphQlQueryVariable {
@@ -451,6 +472,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * getSubWalletsQuery graphQL query
    */
   private getSubWalletsQuery(includeBalances?: boolean, limit?: number, nextToken?: string): GraphQlQueryVariable {
@@ -510,6 +532,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * createBitcoinTransactionMutation graphQL query
    * @param subWalletId
    * @param toAddress
@@ -618,6 +641,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * createEthereumTransactionMutation graphQL query
    * @param fromAddress - the address to send the ethereum transaction from (0x prefixed hex string)
    * @param toAddress - the recipient address of the ethereum transaction (0x prefixed hex string)
@@ -638,6 +662,7 @@ export class TrustVaultGraphQLClient {
     gasPrice?: IntString,
     gasLimit?: IntString,
     currency: string = "GBP",
+    nonce?: Integer,
     sendToDevicesForSigning: boolean = true,
     sendToNetworkWhenSigned: boolean = true,
   ): GraphQlQueryVariable<CreateEthereumTransactionVariables> {
@@ -653,6 +678,7 @@ export class TrustVaultGraphQLClient {
           $sendToDevicesForSigning: Boolean
           $gasLimit: String
           $gasPrice: String
+          $nonce: Int
       ) {
         createEthereumTransaction(
           createTransactionInput: {
@@ -664,6 +690,7 @@ export class TrustVaultGraphQLClient {
               speed: $speed
               gasLimit: $gasLimit
               gasPrice: $gasPrice
+              nonce: $nonce
             }
             source: "API"
             currency: $currency
@@ -713,6 +740,7 @@ export class TrustVaultGraphQLClient {
       gasLimit,
       gasPrice,
       currency,
+      nonce,
       sendToNetworkWhenSigned,
       sendToDevicesForSigning,
     };
@@ -724,6 +752,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * getRequestQuery graphQL query
    * @param requestId
    */
@@ -745,6 +774,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * cancelRequestMutation graphQL query
    * @param requestId
    */
@@ -763,6 +793,7 @@ export class TrustVaultGraphQLClient {
   }
 
   /**
+   * Private API: Use at your own risk
    * createBitcoinAddressMutation graphQL query
    * @param subWalletId
    * @param addressType

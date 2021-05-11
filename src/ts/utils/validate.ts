@@ -4,6 +4,7 @@ import { isValidChecksumAddress } from "ethereumjs-util";
 import {
   Environment,
   HexString,
+  Integer,
   IntString,
   SignCallback,
   SignData,
@@ -69,6 +70,7 @@ export const validateInputs = (
   speed?: TransactionSpeed,
   gasPrice?: string,
   gasLimit?: string,
+  nonce?: Integer,
   sign?: SignCallback,
 ) => {
   // Validate inputs
@@ -89,6 +91,10 @@ export const validateInputs = (
   }
   if (!isValidGasPrice(gasPrice, speed)) {
     throw new Error("You must provide either speed or gasPrice in wei as a string");
+  }
+
+  if (!isValidNonce(nonce)) {
+    throw new Error("Invalid nonce. Must be an integer (number) value >= 0");
   }
 
   if (sign && typeof sign !== "function") {
@@ -127,6 +133,10 @@ export const isValidGasPrice = (gasPrice?: string, speed?: TransactionSpeed) => 
     }
   }
   return valid;
+};
+
+export const isValidNonce = (nonce?: Integer) => {
+  return nonce && typeof nonce === "number" && nonce >= 0 && Number.isInteger(nonce) ? true : nonce ? false : true;
 };
 
 export const isValidSubWalletId = (subWalletId: any): boolean => {

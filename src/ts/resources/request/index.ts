@@ -5,6 +5,7 @@ import {
   Environment,
   EthereumSignData,
   HexString,
+  Integer,
   IntString,
   SignCallback,
   SignRequest,
@@ -87,6 +88,7 @@ export const constructBitcoinTransactionRequest = (
  * @param tvGraphQLClient
  * @param gasPrice - optional, the gasPrice to set for the transaction, decimal integer string in WEI
  * @param gasLimit - optional, the gasLimit to set for the transaction, decimal integer string
+ * @param nonce - optional, the nonce for this transaction. Use with caution.
  * @see https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
  */
 export const createEthereumTransaction = async (
@@ -99,6 +101,7 @@ export const createEthereumTransaction = async (
   tvGraphQLClient: TrustVaultGraphQLClient,
   gasPrice?: string,
   gasLimit?: string,
+  nonce?: Integer,
 ): Promise<TrustVaultRequest> => {
   const { requestId, signData } = await tvGraphQLClient.createEthereumTransaction(
     fromAddress,
@@ -109,6 +112,7 @@ export const createEthereumTransaction = async (
     currency,
     gasPrice,
     gasLimit,
+    nonce,
   );
   const ethereumTransactionRequest = constructEthereumTransactionRequest(requestId, signData);
 

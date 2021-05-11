@@ -1,5 +1,5 @@
 import { BitcoinAddressType, BitcoinAddressUsageType } from "./address";
-import { HexString, IntString, Nullable } from "./data";
+import { HexString, Integer, IntString, Nullable } from "./data";
 import { CreateChangePolicyRequestResponse, PolicySchedule } from "./policy";
 import { RequestItem } from "./request";
 import { AddSignaturePayload } from "./signature";
@@ -56,6 +56,7 @@ export interface CreateEthereumTransactionVariables {
   gasPrice?: string;
   gasLimit?: string;
   currency: string;
+  nonce?: Integer;
   sendToNetworkWhenSigned: boolean;
   sendToDevicesForSigning: boolean;
 }

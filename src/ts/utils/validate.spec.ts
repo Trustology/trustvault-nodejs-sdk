@@ -1,6 +1,6 @@
 import * as chai from "chai";
 import * as dirtyChai from "dirty-chai";
-import { isValidGasLimit, isValidGasPrice, validateInputs } from "./validate";
+import { isValidGasLimit, isValidGasPrice, isValidNonce, validateInputs } from "./validate";
 
 chai.use(dirtyChai);
 const expect = chai.expect;
@@ -79,6 +79,106 @@ describe("Input Validation", () => {
     ).to.throw(/Invalid assetSymbol/);
   });
 
+  it("should reject if nonce is a string", () => {
+    const testInput = {
+      fromAddress: "0xc0B9FC3D76eC77E2Fe7E6905FdB54c8D6ccDD417",
+      toAddress: "0xc0B9FC3D76eC77E2Fe7E6905FdB54c8D6ccDD417",
+      amount: "120",
+      assetSymbol: "ETH",
+      currency: "USD",
+      nonce: "1",
+      speed: "FAST" as any,
+    };
+    expect(() =>
+      validateInputs(
+        testInput.fromAddress,
+        testInput.toAddress,
+        testInput.amount,
+        testInput.assetSymbol,
+        testInput.currency,
+        testInput.speed,
+        undefined,
+        undefined,
+        testInput.nonce as any,
+      ),
+    ).to.throw(/Invalid nonce/);
+  });
+
+  it("should reject if nonce is a negative", () => {
+    const testInput = {
+      fromAddress: "0xc0B9FC3D76eC77E2Fe7E6905FdB54c8D6ccDD417",
+      toAddress: "0xc0B9FC3D76eC77E2Fe7E6905FdB54c8D6ccDD417",
+      amount: "120",
+      assetSymbol: "ETH",
+      currency: "USD",
+      nonce: -1,
+      speed: "FAST" as any,
+    };
+    expect(() =>
+      validateInputs(
+        testInput.fromAddress,
+        testInput.toAddress,
+        testInput.amount,
+        testInput.assetSymbol,
+        testInput.currency,
+        testInput.speed,
+        undefined,
+        undefined,
+        testInput.nonce as any,
+      ),
+    ).to.throw(/Invalid nonce/);
+  });
+
+  it("should reject if nonce decimal value", () => {
+    const testInput = {
+      fromAddress: "0xc0B9FC3D76eC77E2Fe7E6905FdB54c8D6ccDD417",
+      toAddress: "0xc0B9FC3D76eC77E2Fe7E6905FdB54c8D6ccDD417",
+      amount: "120",
+      assetSymbol: "ETH",
+      currency: "USD",
+      nonce: 1.2,
+      speed: "FAST" as any,
+    };
+    expect(() =>
+      validateInputs(
+        testInput.fromAddress,
+        testInput.toAddress,
+        testInput.amount,
+        testInput.assetSymbol,
+        testInput.currency,
+        testInput.speed,
+        undefined,
+        undefined,
+        testInput.nonce as any,
+      ),
+    ).to.throw(/Invalid nonce/);
+  });
+
+  it("should pass if nonce is integer value", () => {
+    const testInput = {
+      fromAddress: "0xc0B9FC3D76eC77E2Fe7E6905FdB54c8D6ccDD417",
+      toAddress: "0xc0B9FC3D76eC77E2Fe7E6905FdB54c8D6ccDD417",
+      amount: "120",
+      assetSymbol: "ETH",
+      currency: "USD",
+      nonce: 1,
+      speed: "FAST" as any,
+    };
+    expect(
+      validateInputs(
+        testInput.fromAddress,
+        testInput.toAddress,
+        testInput.amount,
+        testInput.assetSymbol,
+        testInput.currency,
+        testInput.speed,
+        undefined,
+        undefined,
+        testInput.nonce as any,
+      ),
+    ).to.be.equal(undefined);
+  });
+
   it("should reject if gasPrice or speed is not sent", () => {
     const testInput = {
       fromAddress: "0xc0B9FC3D76eC77E2Fe7E6905FdB54c8D6ccDD417",
@@ -122,5 +222,18 @@ describe("Input Validation", () => {
     expect(isValidGasPrice(null as any, null as any), "null failed").to.equal(false);
     expect(isValidGasPrice("1", "FAST1" as any), "null failed").to.equal(true);
     expect(isValidGasPrice(12 as any, "FAST1" as any), "number failed").to.equal(true);
+  });
+
+  it("Should validate nonce", () => {
+    expect(isValidNonce(), "no params failed").to.equal(true);
+    expect(isValidNonce(null as any), "null failed").to.equal(true);
+    expect(isValidNonce("0" as any), "0 failed").to.equal(false);
+    expect(isValidNonce("hello" as any), "hello failed").to.equal(false);
+    expect(isValidNonce("10" as any), "10 failed").to.equal(false);
+    expect(isValidNonce(1.2), "1.2 failed").to.equal(false);
+    expect(isValidNonce(undefined), "undefined failed").to.equal(true);
+    expect(isValidNonce(0), "undefined failed").to.equal(true);
+    expect(isValidNonce(1), "undefined failed").to.equal(true);
+    expect(isValidNonce(1000000000), "undefined failed").to.equal(true);
   });
 });
