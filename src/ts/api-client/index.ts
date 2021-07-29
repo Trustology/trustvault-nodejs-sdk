@@ -296,8 +296,8 @@ export class TrustVaultGraphQLClient {
    * Cancels the request for the given requestId
    * @param requestId
    */
-  public async cancelRequest(requestId: string): Promise<string> {
-    const { query, variables } = this.cancelRequestMutation(requestId);
+  public async cancelRequest(requestId: string, reason?: string): Promise<string> {
+    const { query, variables } = this.cancelRequestMutation(requestId, reason);
 
     const result = await executeQuery<CancelRequestGraphQlResponse>(
       this.clientWithAPIKeyAuthorization,
@@ -777,14 +777,15 @@ export class TrustVaultGraphQLClient {
    * Private API: Use at your own risk
    * cancelRequestMutation graphQL query
    * @param requestId
+   * @param reason optionally pass the reason for cancelling
    */
-  private cancelRequestMutation(requestId: string): GraphQlQueryVariable<GetRequestVariables> {
-    const mutation = `mutation($requestId: String!) {
-      cancelRequest(requestId: $requestId) {
+  private cancelRequestMutation(requestId: string, reason?: string): GraphQlQueryVariable<GetRequestVariables> {
+    const mutation = `mutation($requestId: String!, $reason: String) {
+      cancelRequest(requestId: $requestId, reason: $reason) {
         requestId
       }
     }`;
-    const cancelRequestVariables: CancelRequestVariables = { requestId };
+    const cancelRequestVariables: CancelRequestVariables = { requestId, reason };
 
     return {
       query: mutation,

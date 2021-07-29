@@ -308,11 +308,12 @@ export class TrustVault {
    * @param {string} requestId - the unique identifier for the request
    * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses
    */
-  public async cancelRequest(requestId: string): Promise<boolean> {
+  public async cancelRequest(requestId: string, reason?: string): Promise<boolean> {
     if (!isValidUuid(requestId)) {
       throw new Error("Invalid requestId");
     }
-    const requestIdResponse: string = await this.tvGraphQLClient.cancelRequest(requestId);
+
+    const requestIdResponse: string = await this.tvGraphQLClient.cancelRequest(requestId, reason);
     return requestIdResponse ? true : false;
   }
 

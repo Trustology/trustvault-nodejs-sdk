@@ -9,6 +9,8 @@ export type AllWebhookMessages =
   | BitcoinTransactionWebhookMessage
   | PolicyChangeRequestWebhookMessage;
 
+export declare type TransactionWebhookMessages = EthereumTransactionWebhookMessage | BitcoinTransactionWebhookMessage;
+
 // Policy Change
 
 export interface WebhookPolicyChangeRequestCreated {
@@ -83,6 +85,7 @@ export interface WebhookTransactionCreated<U, V> {
   subWalletId: SubWalletId;
   subWalletIdString: string;
   transferValueDefinition: TransferValueDefinition;
+  includedInAddressBook: boolean;
 }
 
 export type AllWebhookTransactionCreatedEvents =

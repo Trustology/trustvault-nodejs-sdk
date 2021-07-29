@@ -71,10 +71,12 @@ export type AddSignatureVariables = AddSignaturePayload;
 
 export interface GetRequestVariables {
   requestId: string;
+  reason?: string;
 }
 
 export interface CancelRequestVariables {
   requestId: string;
+  reason?: string;
 }
 
 // Response
