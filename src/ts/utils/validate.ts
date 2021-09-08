@@ -2,6 +2,7 @@ import * as validate from "bitcoin-address-validation";
 import { ec as EC } from "elliptic";
 import { isValidChecksumAddress } from "ethereumjs-util";
 import {
+  DigestSignData,
   Environment,
   HexString,
   Integer,
@@ -148,8 +149,15 @@ export const isValidSubWalletId = (subWalletId: any): boolean => {
 };
 
 export const isTransactionDigestData = (
-  unverifiedDigestData: TransactionDigestData | SignData,
+  unverifiedDigestData: TransactionDigestData | SignData | DigestSignData,
 ): unverifiedDigestData is TransactionDigestData => {
   const unverifiedTxDigestData = unverifiedDigestData as TransactionDigestData;
   return Boolean(unverifiedTxDigestData.transactionDigest);
+};
+
+export const isSignMessageDigestData = (
+  unverifiedDigestData: TransactionDigestData | SignData | DigestSignData,
+): unverifiedDigestData is DigestSignData => {
+  const unverifiedTxDigestData = unverifiedDigestData as DigestSignData;
+  return Boolean(unverifiedTxDigestData.digest);
 };

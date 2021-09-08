@@ -3,6 +3,7 @@ import { config } from "./config";
 import {
   constructBitcoinTransactionRequest,
   constructChangePolicyRequest,
+  constructEthereumSignMessageRequest,
   constructEthereumTransactionRequest,
   createBitcoinTransaction,
   createChangePolicyRequest,
@@ -93,6 +94,11 @@ export class TrustVault {
         const ethPayload = webhookMessage.payload;
         // no signature to validate
         trustVaultRequest = constructEthereumTransactionRequest(ethPayload.requestId, ethPayload.signData);
+        break;
+      case "ETHEREUM_PERSONAL_SIGN_CREATED":
+      case "ETHEREUM_SIGN_TYPED_DATA_CREATED":
+        const { type, payload } = webhookMessage;
+        trustVaultRequest = constructEthereumSignMessageRequest(type, payload);
         break;
       case "POLICY_CHANGE_REQUEST_CREATED":
         trustVaultRequest = constructChangePolicyRequest(webhookMessage.payload, this.trustVaultPublicKey);

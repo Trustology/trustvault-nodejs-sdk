@@ -1,6 +1,9 @@
 import { HexString } from "./data";
 
-export type SignCallback = (signData: SignDataBuffer) => Promise<PublicKeySignaturePairBuffer>;
+export type SignCallback = (
+  signData: SignDataBuffer,
+  requestInfo: { requestId: string },
+) => Promise<PublicKeySignaturePairBuffer>;
 
 export interface SignData {
   // The DER encoded transaction digest and the wallet path
@@ -19,6 +22,15 @@ export interface SignDataBuffer {
 export interface TransactionDigestData extends SignData {
   // The transaction digest
   transactionDigest: string;
+}
+
+export interface DigestSignData extends SignData {
+  digest: HexString;
+}
+
+export interface SignData {
+  signData: HexString; // DER(data)
+  shaSignData: HexString; // SHA(DER(data))
 }
 
 // TODO: docs

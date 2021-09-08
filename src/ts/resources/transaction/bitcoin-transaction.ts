@@ -61,13 +61,13 @@ export class BitcoinTransaction implements RequestClass {
     this.btcLibNetwork = this.getBtcLibNetwork(network);
   }
 
-  public async getSignRequests(sign: SignCallback): Promise<SignRequest[]> {
+  public async getSignRequests(requestId: string, sign: SignCallback): Promise<SignRequest[]> {
     const signRequestPromises: Promise<SignRequest>[] = this.getDigests().map((digest, i) => {
       // Get the matching input path for each digest then create a sign request
       const matchingInput = this.inputs[i];
       const { path } = matchingInput.publicKeyProvenanceData;
       const signData = getTransactionSignDataDigest(digest, path);
-      return createSignRequest(digest, path, matchingInput.unverifiedDigestData, signData, sign);
+      return createSignRequest(requestId, digest, matchingInput.unverifiedDigestData, signData, sign);
     });
     return Promise.all(signRequestPromises);
   }

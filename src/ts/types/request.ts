@@ -1,7 +1,8 @@
 import { SignCallback, SignRequest } from "./signature";
-
+// A class that is a request to be signed
 export interface RequestClass {
-  getSignRequests(sign: SignCallback): Promise<SignRequest[]>;
+  // Get the details of how to sign this operation
+  getSignRequests(requestId: string, sign: SignCallback): Promise<SignRequest[]>;
   validate(...args: any[]): boolean;
 }
 

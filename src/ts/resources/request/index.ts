@@ -4,6 +4,8 @@ import {
   CreateChangePolicyRequestResponse,
   Environment,
   EthereumSignData,
+  EthereumSignMessageCreated,
+  EthereumSignMessageWebhookType,
   HexString,
   Integer,
   IntString,
@@ -12,6 +14,7 @@ import {
   TransactionSpeed,
   TrustVaultRequest,
 } from "../../types";
+import { EthereumSignMessage } from "../sign-message/ethereum-sign-message";
 import { BitcoinTransaction, EthereumTransaction } from "../transaction";
 import { Policy } from "../wallet";
 
@@ -31,7 +34,7 @@ export const processRequest = async (
   }
 
   // create sign requests
-  const signRequests: SignRequest[] = await request.getSignRequests(sign);
+  const signRequests: SignRequest[] = await request.getSignRequests(requestId, sign);
 
   // submit signatures
   const id = await tvGraphQLClient.addSignature({
@@ -128,6 +131,14 @@ export const constructEthereumTransactionRequest = (
 ): TrustVaultRequest => ({
   requestId,
   request: new EthereumTransaction(signData),
+});
+
+export const constructEthereumSignMessageRequest = (
+  type: EthereumSignMessageWebhookType,
+  webhookPayload: EthereumSignMessageCreated,
+): TrustVaultRequest => ({
+  requestId: webhookPayload.requestId,
+  request: new EthereumSignMessage(type, webhookPayload.signData),
 });
 
 // Change Policy

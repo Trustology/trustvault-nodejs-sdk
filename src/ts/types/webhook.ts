@@ -1,11 +1,13 @@
 import { IsoDateString, NumString } from "./data";
 import { PolicyTemplate } from "./policy";
-import { SignData } from "./signature";
-import { SubWalletId } from "./sub-wallet";
+import { DigestSignData, SignData } from "./signature";
+import { HdWalletPath, SubWalletId } from "./sub-wallet";
 import { BitcoinSignData, EthereumSignData } from "./transaction";
 
 export type AllWebhookMessages =
   | EthereumTransactionWebhookMessage
+  | EthereumPersonalSignWebhookMessage
+  | EthereumSignTypedDataWebhookMessage
   | BitcoinTransactionWebhookMessage
   | PolicyChangeRequestWebhookMessage;
 
@@ -46,9 +48,40 @@ export type BitcoinChainSymbol = "BITCOIN";
 
 export type EthereumTransactionCreated = WebhookTransactionCreated<EthereumChainSymbol, EthereumSignData>;
 
+export interface EthereumSignMessageCreated {
+  source: string;
+  walletId: string;
+  subWalletId: SubWalletId;
+  subWalletIdString: string;
+  signData: EthereumSignMessageSignData;
+  requestId: string;
+  trustId: string;
+}
+
+export interface EthereumSignMessageSignData {
+  unverifiedDigestData: DigestSignData;
+  hdWalletPath: HdWalletPath;
+  data: EthereumSignMessageData;
+}
+
+export interface EthereumSignMessageData {
+  message: string; // if ETHEREUM_SIGN_TYPED_DATA the message is a stringified JSON
+  address: string;
+}
+
 export type EthereumTransactionWebhookMessage = WebhookMessage<
   EthereumTransactionCreated,
   "ETHEREUM_TRANSACTION_CREATED"
+>;
+
+export type EthereumPersonalSignWebhookMessage = WebhookMessage<
+  EthereumSignMessageCreated,
+  "ETHEREUM_PERSONAL_SIGN_CREATED"
+>;
+
+export type EthereumSignTypedDataWebhookMessage = WebhookMessage<
+  EthereumSignMessageCreated,
+  "ETHEREUM_SIGN_TYPED_DATA_CREATED"
 >;
 
 export type EthereumChainSymbol = "ETHEREUM";
@@ -90,6 +123,7 @@ export interface WebhookTransactionCreated<U, V> {
 
 export type AllWebhookTransactionCreatedEvents =
   | EthereumTransactionCreated
+  | EthereumSignMessageCreated
   | BitcoinTransactionCreatedEvent
   | WebhookPolicyChangeRequestCreated;
 
@@ -102,7 +136,10 @@ export interface WebhookMessage<T extends AllWebhookTransactionCreatedEvents, U 
   isoTimestamp: string;
 }
 
+export type EthereumSignMessageWebhookType = "ETHEREUM_PERSONAL_SIGN_CREATED" | "ETHEREUM_SIGN_TYPED_DATA_CREATED";
+
 export type WebhookMessageType =
   | "ETHEREUM_TRANSACTION_CREATED"
+  | EthereumSignMessageWebhookType
   | "BITCOIN_TRANSACTION_CREATED"
   | "POLICY_CHANGE_REQUEST_CREATED";

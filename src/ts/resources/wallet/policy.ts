@@ -26,11 +26,10 @@ export class Policy implements RequestClass {
     this.trustVaultPublicKey = trustVaultPublicKey;
   }
 
-  public async getSignRequests(sign: SignCallback): Promise<SignRequest[]> {
+  public async getSignRequests(requestId: string, sign: SignCallback): Promise<SignRequest[]> {
     const signData: SignDataBuffer = this.getSignData();
     const digest: Buffer = signData.shaSignData;
-    const path = undefined;
-    const signRequest = await createSignRequest(digest, path, this.unverifiedDigestData, signData, sign);
+    const signRequest = await createSignRequest(requestId, digest, this.unverifiedDigestData, signData, sign);
     return [signRequest];
   }
 

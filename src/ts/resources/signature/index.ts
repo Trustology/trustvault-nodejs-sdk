@@ -8,6 +8,7 @@ import {
   VALID_SIGNATURE_BYTE_LENGTH,
 } from "../../static-data";
 import {
+  DigestSignData,
   HdWalletPath,
   PolicySchedule,
   ProvenanceDataSchema,
@@ -23,6 +24,7 @@ import {
   derEncodeProvenance,
   derEncodeRecovererSchedules,
   derEncodeTxDigestPath,
+  isSignMessageDigestData,
   isTransactionDigestData,
 } from "../../utils";
 
@@ -198,34 +200,41 @@ export const getTransactionSignDataDigest = (transactionDigest: Buffer, path: Hd
  * @returns {SignRequest}
  */
 export const createSignRequest = async (
+  requestId: string,
   digest: Buffer,
-  path: HdWalletPath | undefined,
-  unverifiedDigestData: TransactionDigestData | SignData,
+  unverifiedDigestData: TransactionDigestData | SignData | DigestSignData,
   { signData, shaSignData }: SignDataBuffer, // own generated signData
   sign: SignCallback,
 ): Promise<SignRequest> => {
+  const digestHex = digest.toString("hex");
+  const signDataHex = signData.toString("hex");
+  const shaSignDataHex = shaSignData.toString("hex");
   let areSignDigestsCorrect =
-    signData.toString("hex") === unverifiedDigestData.signData ||
-    shaSignData.toString("hex") === unverifiedDigestData.shaSignData;
+    signDataHex === unverifiedDigestData.signData && shaSignDataHex === unverifiedDigestData.shaSignData;
 
   if (isTransactionDigestData(unverifiedDigestData)) {
-    areSignDigestsCorrect = areSignDigestsCorrect || digest.toString("hex") === unverifiedDigestData.transactionDigest;
+    areSignDigestsCorrect = areSignDigestsCorrect && digestHex === unverifiedDigestData.transactionDigest;
+  }
+
+  if (isSignMessageDigestData(unverifiedDigestData)) {
+    areSignDigestsCorrect = areSignDigestsCorrect && digestHex === unverifiedDigestData.digest;
   }
 
   if (!areSignDigestsCorrect) {
+    const digestData = JSON.stringify({
+      digest: digestHex,
+      signData: signDataHex,
+      shaSignData: shaSignDataHex,
+      unverifiedDigestData,
+    });
     throw new Error(
-      `The digest data produced does not match with the expected unverified digest from server: ${JSON.stringify({
-        digest,
-        signData,
-        shaSignData,
-        unverifiedDigestData,
-      })}`,
+      `The digest data produced does not match with the expected unverified digest from server: ${digestData}`,
     );
   }
 
-  const publicKeySignaturePair: PublicKeySignaturePairBuffer = await sign({ signData, shaSignData });
+  const publicKeySignaturePair: PublicKeySignaturePairBuffer = await sign({ signData, shaSignData }, { requestId });
 
-  // verify the public key signature pair that the sign callback is correct
+  // verify the public key signature pair that the sign callback returned is correct
   verifyPublicKeySignaturePair(shaSignData, publicKeySignaturePair, NIST_P_256_CURVE);
 
   const signRequest: SignRequest = {

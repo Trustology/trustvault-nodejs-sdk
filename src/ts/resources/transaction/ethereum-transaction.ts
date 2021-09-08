@@ -47,12 +47,14 @@ export class EthereumTransaction implements RequestClass {
 
   /**
    * Invokes the sign callback with the generated transaction sign data
-   * @returns {SignRequest}
+   * @param  {string} requestId
+   * @param  {SignCallback} sign
+   * @returns Promise<SignRequest[]>
    */
-  public async getSignRequests(sign: SignCallback): Promise<SignRequest[]> {
+  public async getSignRequests(requestId: string, sign: SignCallback): Promise<SignRequest[]> {
     const digest: Buffer = this.generateTransactionDigest();
     const signData = getTransactionSignDataDigest(digest, this.hdWalletPath);
-    const signRequest = await createSignRequest(digest, this.hdWalletPath, this.unverifiedDigestData, signData, sign);
+    const signRequest = await createSignRequest(requestId, digest, this.unverifiedDigestData, signData, sign);
     return [signRequest];
   }
 
