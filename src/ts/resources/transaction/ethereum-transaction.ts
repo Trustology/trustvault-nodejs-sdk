@@ -1,3 +1,4 @@
+import Common from "ethereumjs-common";
 import { Transaction as EthereumTx } from "ethereumjs-tx";
 import { toChecksumAddress } from "ethereumjs-util";
 import {
@@ -122,8 +123,14 @@ export class EthereumTransaction implements RequestClass {
     // Convert to raw transaction (hex values)
     const rawTransaction: EthRawTransaction = this.constructRawTransaction();
 
+    // Create custom chainsType object (ethereumjs-common) with same config as mainnet apart from chainId.
+    // This ensures ethereumjs-tx will not throw for unknown chainId's.
+    const chainTypeObject = Common.forCustomChain("mainnet", {
+      chainId: this.chainId,
+    });
+
     // Get transactionDigest
-    const ethTransaction = new EthereumTx(rawTransaction, { chain: this.chainId });
+    const ethTransaction = new EthereumTx(rawTransaction, { common: chainTypeObject });
     return ethTransaction.hash(false);
   }
 }

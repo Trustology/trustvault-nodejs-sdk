@@ -226,7 +226,7 @@ const UINT_TYPES = [
   uint256(),
 ];
 
-describe.only("solidity-types.ts", () => {
+describe("solidity-types.ts", () => {
   describe("address", () => {
     it("address", () => {
       expect(address().value).to.equal("0x0000000000000000000000000000000000000000");
