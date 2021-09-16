@@ -1,9 +1,8 @@
 import * as chai from "chai";
 import * as dirtyChai from "dirty-chai";
-import Common from "ethereumjs-common";
-import { Transaction as EthereumTx } from "ethereumjs-tx";
 import { EthRawTransaction } from "../../types/transaction";
 import { numberToHex } from "../../utils";
+import { buildEthTransaction } from "./ethereum-transaction";
 
 chai.use(dirtyChai);
 const expect = chai.expect;
@@ -19,11 +18,9 @@ describe("Build ethereumtx-js transaction", () => {
   };
 
   it("Ensure transaction will be built for unsupported chainId", () => {
-    const chainId = 250;
-    const chainTypeObject = Common.forCustomChain("mainnet", {
-      chainId,
-    });
-    const ethTransaction = new EthereumTx(ethRawTransaction, { common: chainTypeObject });
-    expect(ethTransaction.getChainId()).to.be.equal(chainId);
+    const ethTransaction = buildEthTransaction(ethRawTransaction, ethRawTransaction.chainId);
+    expect(ethTransaction.getChainId()).to.be.equal(ethRawTransaction.chainId);
+    // tslint:disable:no-unused-expression
+    expect(ethTransaction.hash(false)).to.not.throw;
   });
 });

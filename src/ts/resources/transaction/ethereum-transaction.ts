@@ -123,14 +123,24 @@ export class EthereumTransaction implements RequestClass {
     // Convert to raw transaction (hex values)
     const rawTransaction: EthRawTransaction = this.constructRawTransaction();
 
-    // Create custom chainsType object (ethereumjs-common) with same config as mainnet apart from chainId.
-    // This ensures ethereumjs-tx will not throw for unknown chainId's.
-    const chainTypeObject = Common.forCustomChain("mainnet", {
-      chainId: this.chainId,
-    });
-
     // Get transactionDigest
-    const ethTransaction = new EthereumTx(rawTransaction, { common: chainTypeObject });
+    const ethTransaction = buildEthTransaction(rawTransaction, this.chainId);
     return ethTransaction.hash(false);
   }
 }
+
+/**
+ * Returns an ethereumjs-tx Transaction instance
+ */
+export const buildEthTransaction = (rawTransaction: EthRawTransaction, chainId: number): EthereumTx => {
+  // Create custom chainsType object (ethereumjs-common) with same config as mainnet apart from chainId.
+  // This ensures ethereumjs-tx will not throw for unknown chainId's.
+  const chainTypeObject = Common.forCustomChain(
+    "mainnet",
+    {
+      chainId,
+    },
+    "muirGlacier",
+  );
+  return new EthereumTx(rawTransaction, { common: chainTypeObject });
+};
