@@ -8,3 +8,4 @@ declare module "@redux-offline/redux-offline/lib/types" {
 }
 
 declare module "asn1.js";
+declare module "ethereumjs-tx";

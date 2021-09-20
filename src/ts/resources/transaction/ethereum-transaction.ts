@@ -1,5 +1,4 @@
-import Common from "ethereumjs-common";
-import { Transaction as EthereumTx } from "ethereumjs-tx";
+import * as EthereumTransactionLib from "ethereumjs-tx";
 import { toChecksumAddress } from "ethereumjs-util";
 import {
   EthereumSignData,
@@ -119,28 +118,12 @@ export class EthereumTransaction implements RequestClass {
   /**
    * Returns a sha3-256 hash of the serialized tx
    */
-  private generateTransactionDigest(): Buffer {
+  public generateTransactionDigest(): Buffer {
     // Convert to raw transaction (hex values)
     const rawTransaction: EthRawTransaction = this.constructRawTransaction();
 
     // Get transactionDigest
-    const ethTransaction = buildEthTransaction(rawTransaction, this.chainId);
+    const ethTransaction = new EthereumTransactionLib(rawTransaction);
     return ethTransaction.hash(false);
   }
 }
-
-/**
- * Returns an ethereumjs-tx Transaction instance
- */
-export const buildEthTransaction = (rawTransaction: EthRawTransaction, chainId: number): EthereumTx => {
-  // Create custom chainsType object (ethereumjs-common) with same config as mainnet apart from chainId.
-  // This ensures ethereumjs-tx will not throw for unknown chainId's.
-  const chainTypeObject = Common.forCustomChain(
-    "mainnet",
-    {
-      chainId,
-    },
-    "muirGlacier",
-  );
-  return new EthereumTx(rawTransaction, { common: chainTypeObject });
-};
