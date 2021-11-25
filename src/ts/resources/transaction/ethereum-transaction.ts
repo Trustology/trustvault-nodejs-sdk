@@ -62,7 +62,7 @@ export class EthereumTransaction implements RequestClass {
    * Verifies the input and the output change address is as expected
    * @throws - throws an error input and the output change address is as expected
    */
-  public validate(expectedToAddress: HexString, expectedAmount: IntString): boolean {
+  public validateResponse(expectedToAddress: HexString, expectedAmount: IntString): boolean {
     let toAddress = this.to;
     let value = this.value;
     const isErc20Transaction = Boolean(this.data);

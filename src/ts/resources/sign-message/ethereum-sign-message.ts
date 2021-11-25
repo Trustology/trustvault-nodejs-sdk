@@ -41,7 +41,7 @@ export class EthereumSignMessage implements RequestClass {
    * Verifies the unverifiedDigestData
    * @throws - throws an error if the unverifiedDigestData is not what is expected
    */
-  public validate(): boolean {
+  public validateResponse(): boolean {
     const digest: Buffer = this.generateSignMessageDigest();
     const { signData, shaSignData } = getTransactionSignDataDigest(digest, this.hdWalletPath);
     const areSignDigestsCorrect =

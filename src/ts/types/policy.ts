@@ -10,6 +10,9 @@ export interface Clause {
 
 export type PolicySchedule = Clause[];
 
+/**
+ * This is a Proposed Policy that has yet to be signed
+ */
 export interface PolicyTemplate {
   // The epoch timestamp the policy change request is valid until
   expiryTimestamp: number;
@@ -18,6 +21,28 @@ export interface PolicyTemplate {
   // The schedule that describes which public keys and how many of it is needed to change the wallet policy
   recovererSchedules: PolicySchedule[];
   type: "POLICY_TEMPLATE";
+}
+
+/**
+ * This is a Policy that is signed and in use
+ */
+export interface Policy {
+  creationDeadline: number;
+  creationTimestamp: number;
+  masterPublicKey: string;
+  version: number;
+  walletId: string;
+  delegateSchedules: DelegateScheduleArray;
+  recovererSchedules: RecovererScheduleArray;
+}
+
+export type PolicyScheduleArray = PolicySchedule[];
+export type DelegateScheduleArray = PolicySchedule[];
+export type RecovererScheduleArray = PolicySchedule[];
+
+export interface ValidationResult {
+  result: boolean;
+  errors?: string[];
 }
 
 export interface CreateChangePolicyRequestResponse {

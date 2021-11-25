@@ -1,6 +1,16 @@
 import * as chai from "chai";
 import * as dirtyChai from "dirty-chai";
-import { isValidGasLimit, isValidGasPrice, isValidNonce, validateInputs } from "./validate";
+import { isDeepStrictEqual } from "util";
+import { isValidUuid } from ".";
+import { DelegateScheduleArray, PolicySchedule } from "../types/policy";
+import {
+  copyPolicy,
+  isValidGasLimit,
+  isValidGasPrice,
+  isValidNonce,
+  validateInputs,
+  validateSchedule,
+} from "./validate";
 
 chai.use(dirtyChai);
 const expect = chai.expect;
@@ -23,6 +33,11 @@ describe("Input Validation", () => {
         testInput.currency,
       ),
     ).to.throw(/Invalid fromAddress/);
+  });
+  it("should validate guid", () => {
+    expect(isValidUuid("fbc204c9-4d8b-4c34-94bb-ff4e5e98f216")).to.be.equal(true);
+    expect(isValidUuid("Fbc204c9-4d8b-4c34-94bb-ff4e5e98f216")).to.be.equal(true);
+    expect(isValidUuid("fbc204c9-4d8b-4c34-94bb-ff4e5e98f21")).to.be.equal(false);
   });
   it("should reject if toAddress incorrect", () => {
     const testInput = {
@@ -102,6 +117,156 @@ describe("Input Validation", () => {
         testInput.nonce as any,
       ),
     ).to.throw(/Invalid nonce/);
+  });
+
+  it("should reject a policy with 0 quorumCount", () => {
+    const org: DelegateScheduleArray = [
+      [
+        {
+          keys: [
+            "046d8b72943e94b2fdadc3234aa7df461742a0f16729ff8e0f67751456b3f2e9e250956d53d98afda0ff8f733b375aafb8809cd85257b8e1da7203ecfb30f345e8",
+            "04ccabf090e0d428ef0be689b5e614fdfeec14e52fbbe95cc1e31cd4b3a083a5253c8642643bf2ba1e3fd8e08871570c5422ffedc2b5c87daf3b4b893096ae7671",
+          ],
+          quorumCount: 0,
+        },
+      ],
+    ];
+    const expectedResults = {
+      result: false,
+      errors: [
+        "DelegateSchedule index 0, clause index 0 cannot have quorumCount (0) > number of keys (2) or quorumCount <= 0",
+      ],
+    };
+    expect(validateSchedule(org, "Delegate")).to.be.deep.eq(expectedResults);
+  });
+
+  it("should validate the same policy is equal", () => {
+    // This could be a policy from a user or from graphQL response, hence the __typename field
+    const org: any = [
+      [
+        {
+          keys: [
+            "046d8b72943e94b2fdadc3234aa7df461742a0f16729ff8e0f67751456b3f2e9e250956d53d98afda0ff8f733b375aafb8809cd85257b8e1da7203ecfb30f345e8",
+            "04ccabf090e0d428ef0be689b5e614fdfeec14e52fbbe95cc1e31cd4b3a083a5253c8642643bf2ba1e3fd8e08871570c5422ffedc2b5c87daf3b4b893096ae7671",
+          ],
+          quorumCount: 1,
+          __typename: "Schedule",
+        },
+        {
+          keys: [
+            "046d8b72943e94b2fdadc3234aa7df461742a0f16729ff8e0f67751456b3f2e9e250956d53d98afda0ff8f733b375aafb8809cd85257b8e1da7203ecfb30f345e8",
+            "04ccabf090e0d428ef0be689b5e614fdfeec14e52fbbe95cc1e31cd4b3a083a5253c8642643bf2ba1e3fd8e08871570c5422ffedc2b5c87daf3b4b893096ae7671",
+          ],
+          quorumCount: 1,
+          __typename: "Schedule",
+        },
+      ],
+      [
+        {
+          keys: [
+            "046d8b72943e94b2fdadc3234aa7df461742a0f16729ff8e0f67751456b3f2e9e250956d53d98afda0ff8f733b375aafb8809cd85257b8e1da7203ecfb30f345e8",
+            "04ccabf090e0d428ef0be689b5e614fdfeec14e52fbbe95cc1e31cd4b3a083a5253c8642643bf2ba1e3fd8e08871570c5422ffedc2b5c87daf3b4b893096ae7671",
+          ],
+          quorumCount: 1,
+          __typename: "Schedule",
+        },
+        {
+          keys: [
+            "046d8b72943e94b2fdadc3234aa7df461742a0f16729ff8e0f67751456b3f2e9e250956d53d98afda0ff8f733b375aafb8809cd85257b8e1da7203ecfb30f345e8",
+            "04ccabf090e0d428ef0be689b5e614fdfeec14e52fbbe95cc1e31cd4b3a083a5253c8642643bf2ba1e3fd8e08871570c5422ffedc2b5c87daf3b4b893096ae7671",
+          ],
+          quorumCount: 1,
+          __typename: "Schedule",
+        },
+      ],
+    ];
+
+    const policy2: PolicySchedule[] = [
+      [
+        {
+          keys: [
+            "046d8b72943e94b2fdadc3234aa7df461742a0f16729ff8e0f67751456b3f2e9e250956d53d98afda0ff8f733b375aafb8809cd85257b8e1da7203ecfb30f345e8",
+            "04ccabf090e0d428ef0be689b5e614fdfeec14e52fbbe95cc1e31cd4b3a083a5253c8642643bf2ba1e3fd8e08871570c5422ffedc2b5c87daf3b4b893096ae7671",
+          ],
+          quorumCount: 1,
+        },
+        {
+          keys: [
+            "046d8b72943e94b2fdadc3234aa7df461742a0f16729ff8e0f67751456b3f2e9e250956d53d98afda0ff8f733b375aafb8809cd85257b8e1da7203ecfb30f345e8",
+            "04ccabf090e0d428ef0be689b5e614fdfeec14e52fbbe95cc1e31cd4b3a083a5253c8642643bf2ba1e3fd8e08871570c5422ffedc2b5c87daf3b4b893096ae7671",
+          ],
+          quorumCount: 1,
+        },
+      ],
+      [
+        {
+          keys: [
+            "046d8b72943e94b2fdadc3234aa7df461742a0f16729ff8e0f67751456b3f2e9e250956d53d98afda0ff8f733b375aafb8809cd85257b8e1da7203ecfb30f345e8",
+            "04ccabf090e0d428ef0be689b5e614fdfeec14e52fbbe95cc1e31cd4b3a083a5253c8642643bf2ba1e3fd8e08871570c5422ffedc2b5c87daf3b4b893096ae7671",
+          ],
+          quorumCount: 1,
+        },
+        {
+          keys: [
+            "046d8b72943e94b2fdadc3234aa7df461742a0f16729ff8e0f67751456b3f2e9e250956d53d98afda0ff8f733b375aafb8809cd85257b8e1da7203ecfb30f345e8",
+            "04ccabf090e0d428ef0be689b5e614fdfeec14e52fbbe95cc1e31cd4b3a083a5253c8642643bf2ba1e3fd8e08871570c5422ffedc2b5c87daf3b4b893096ae7671",
+          ],
+          quorumCount: 1,
+        },
+      ],
+    ];
+
+    // use the copyPolicy function here to test it removes the __typename
+    expect(isDeepStrictEqual(copyPolicy(org), policy2)).to.equal(true);
+  });
+
+  it("should not say different policies are equal", () => {
+    const policy: PolicySchedule[] = [
+      [
+        {
+          keys: ["key1", "key2"],
+          quorumCount: 1,
+        },
+        {
+          keys: ["key1", "key2"],
+          quorumCount: 1,
+        },
+      ],
+      [
+        {
+          keys: ["key1", "key2"],
+          quorumCount: 1,
+        },
+        {
+          keys: ["key1", "key2"],
+          quorumCount: 1,
+        },
+      ],
+    ];
+
+    const policy2: PolicySchedule[] = [
+      [
+        {
+          keys: ["key1", "key2"],
+          quorumCount: 1,
+        },
+        {
+          keys: ["key1", "key2"],
+          quorumCount: 1,
+        },
+      ],
+      [
+        {
+          keys: ["key1", "key2"],
+          quorumCount: 1,
+        },
+        {
+          keys: ["key1", "key"], // this one is different
+          quorumCount: 1,
+        },
+      ],
+    ];
+    expect(isDeepStrictEqual(policy, policy2)).to.equal(false);
   });
 
   it("should reject if nonce is a negative", () => {

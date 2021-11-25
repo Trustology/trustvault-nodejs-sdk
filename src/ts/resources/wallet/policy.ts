@@ -1,7 +1,9 @@
 import { createHash } from "crypto";
+import { isDeepStrictEqual } from "util";
 import {
   CreateChangePolicyRequestResponse,
   HexString,
+  PolicyScheduleArray,
   PolicyTemplate,
   RequestClass,
   SignCallback,
@@ -9,7 +11,7 @@ import {
   SignDataBuffer,
   SignRequest,
 } from "../../types";
-import { derEncodePolicy } from "../../utils";
+import { copyPolicy, derEncodePolicy } from "../../utils";
 import { createSignRequest, verifyRecovererSchedules } from "../signature";
 
 export class Policy implements RequestClass {
@@ -34,17 +36,26 @@ export class Policy implements RequestClass {
   }
 
   /**
-   * Validates the recovererSchedules came from trustVault and if given, the newDelegatePublicKey is in the delegate schedule
-   * @param newDelegatePublicKey
+   * Validates the recovererSchedules came from trustVault and if given, the newDelegateSchedules is in the delegate schedule
+   * @param newDelegateSchedules
    */
-  public validate(newDelegatePublicKey?: HexString): boolean {
-    // should we validate specifically that it should be 1 schedule and its 1 of 1?
-    if (newDelegatePublicKey) {
-      const isNewPublicKeyInDelegateSchedule = this.policyTemplate.delegateSchedules.some((schedule) =>
-        schedule.some((clause) => clause.keys.includes(newDelegatePublicKey)),
+  public validateResponse(newDelegateSchedules?: PolicyScheduleArray): boolean {
+    if (newDelegateSchedules) {
+      // copy the delegateSchedule that is in the policy to remove fields not needed
+      const delegateScheduleInPolicy: PolicyScheduleArray | undefined = copyPolicy(
+        this.policyTemplate.delegateSchedules,
       );
-      if (!isNewPublicKeyInDelegateSchedule) {
-        throw new Error("PolicyTemplate delegateSchedules does not have the expected publicKey");
+      if (!delegateScheduleInPolicy) {
+        throw new Error(
+          `PolicyTemplate delegateSchedules was not well formed ${JSON.stringify(
+            this.policyTemplate.delegateSchedules,
+          )}`,
+        );
+      } else {
+        const isDelegateSchedulesInPolicyTemplate = isDeepStrictEqual(delegateScheduleInPolicy, newDelegateSchedules);
+        if (!isDelegateSchedulesInPolicyTemplate) {
+          throw new Error("PolicyTemplate delegateSchedules does not have the expected schedule");
+        }
       }
     }
 

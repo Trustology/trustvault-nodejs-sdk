@@ -1,9 +1,10 @@
+import { GUID } from "aws-sdk/clients/es";
 import { BitcoinAddressType, BitcoinAddressUsageType } from "./address";
 import { HexString, Integer, IntString, Nullable } from "./data";
 import { CreateChangePolicyRequestResponse, PolicySchedule } from "./policy";
 import { RequestItem } from "./request";
 import { AddSignaturePayload } from "./signature";
-import { SubWallet } from "./sub-wallet";
+import { ReceiveAddressDetails, SubWallet, SubWalletType } from "./sub-wallet";
 import {
   CreateBitcoinTransactionIdResponse,
   CreateEthereumTransactionResponse,
@@ -61,6 +62,12 @@ export interface CreateEthereumTransactionVariables {
   sendToDevicesForSigning: boolean;
 }
 
+export interface CreateSubWalletVariables {
+  walletId: GUID;
+  name: string;
+  type: SubWalletType;
+}
+
 export interface CreateBitcoinAddressVariables {
   subWalletId: string;
   addressType: BitcoinAddressType;
@@ -92,6 +99,17 @@ export interface CreateBitcoinTransactionGraphQlResponse {
 export interface CreateEthereumTransactionGraphQlResponse {
   createEthereumTransaction: Omit<CreateEthereumTransactionResponse, "signData"> & { signData: EthereumSign };
 }
+
+export interface CreateSubWalletGraphQlResponse {
+  createSubWallet: {
+    subWalletId: string;
+    receiveAddressDetails: UnverifiedReceiveAddressDetails;
+  };
+}
+// Type with an unverified address
+export type UnverifiedReceiveAddressDetails = Omit<ReceiveAddressDetails, "verifiedAddress"> & {
+  unverifiedAddress: string;
+};
 
 export interface CreateBitcoinAddressGraphQlResponse {
   createBitcoinAddress: {

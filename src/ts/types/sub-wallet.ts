@@ -1,11 +1,28 @@
 import { GraphQLError } from "graphql";
 import { HexString, Integer, IsoDateString, Nullable, NumString } from "./data";
+import { UnverifiedReceiveAddressDetails } from "./graphql-client";
 
-export const EXCHANGE_TYPES = ["BITMEX", "COINBASE_PRIME", "KRAKEN", "LUNO", "VALR", "TAGOMI"] as const;
-export const BLOCKCHAIN_TYPES = ["BTC", "ETH", "BINANCE"] as const; // NOTE: "BINANCE" is used rather than "BNB" on subWalletType
-export type ExchangeType = typeof EXCHANGE_TYPES[number];
-export const SUB_WALLET_TYPES = [...EXCHANGE_TYPES, ...BLOCKCHAIN_TYPES] as const;
+export const BLOCKCHAIN_TYPES = ["BTC", "ETH", "BINANCE", "RADIX", "XDCNETWORK"]; // NOTE: "BINANCE" is used rather than "BNB" on subWalletType
+export const SUB_WALLET_TYPES = [...BLOCKCHAIN_TYPES];
 export type SubWalletType = typeof SUB_WALLET_TYPES[number];
+
+// Type with a verified address from the verified publicKey
+export interface ReceiveAddressDetails {
+  path: HdWalletPath;
+  publicKey: HexString;
+  trustVaultProvenanceSignature: string;
+  verifiedAddress: string;
+}
+export interface CreateSubWalletResponse {
+  subWalletId: string;
+  receiveAddressDetails: ReceiveAddressDetails;
+}
+
+// Type with an unverified address
+export interface CreateSubWalletUnverifiedResponse {
+  subWalletId: string;
+  receiveAddressDetails: UnverifiedReceiveAddressDetails;
+}
 
 export interface SubWalletId {
   id: string;

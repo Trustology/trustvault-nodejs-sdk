@@ -6,5 +6,9 @@ export const SANDBOX_TRUSTVAULT_PUBLIC_KEY_BUFFER: Buffer = Buffer.from(
   "04f98d938ca89e66d3e4977b367fe9cd6b45bf2f8677eba9c630835124618f681cafee8d3efda71fc35be2e0a97ce02d1a59a90eb7ee4ffdea21fb2b37ea9039e2",
   "hex",
 );
+export const PREPROD_TRUSTVAULT_PUBLIC_KEY_BUFFER: Buffer = Buffer.from(
+  "040e177769d4302f6cb0a1229d13d106ad9eb7ea53042bfb24cf4eb572ced1c13da2621b202cfd475e2847d6e380bd00b747a6dacf99381dc9e99bc567b4edf994",
+  "hex",
+);
 export const VALID_PUBLIC_KEY_BYTE_LENGTH = 65;
 export const PUBLIC_KEY_HEX_PREFIX = "04";

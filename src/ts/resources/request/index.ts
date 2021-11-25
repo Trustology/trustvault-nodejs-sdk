@@ -9,6 +9,7 @@ import {
   HexString,
   Integer,
   IntString,
+  PolicySchedule,
   SignCallback,
   SignRequest,
   TransactionSpeed,
@@ -63,7 +64,7 @@ export const createBitcoinTransaction = async (
   const bitcoinTransactionRequest = constructBitcoinTransactionRequest(requestId, signData, env);
 
   // validate the created transaction against the inputs
-  bitcoinTransactionRequest.request.validate(subWalletId, toAddress, amount);
+  bitcoinTransactionRequest.request.validateResponse(subWalletId, toAddress, amount);
 
   return bitcoinTransactionRequest;
 };
@@ -120,7 +121,7 @@ export const createEthereumTransaction = async (
   const ethereumTransactionRequest = constructEthereumTransactionRequest(requestId, signData);
 
   // validate the created transaction request against inputs
-  ethereumTransactionRequest.request.validate(toAddress, amount);
+  ethereumTransactionRequest.request.validateResponse(toAddress, amount);
 
   return ethereumTransactionRequest;
 };
@@ -145,15 +146,15 @@ export const constructEthereumSignMessageRequest = (
 
 export const createChangePolicyRequest = async (
   walletId: string,
-  newDelegatePublicKey: HexString,
+  newDelegateSchedules: PolicySchedule[],
   trustVaultPublicKey: Buffer,
   tvGraphQLClient: TrustVaultGraphQLClient,
 ): Promise<TrustVaultRequest> => {
-  const createChangePolicyResponse = await tvGraphQLClient.createChangePolicyRequest(walletId, newDelegatePublicKey);
+  const createChangePolicyResponse = await tvGraphQLClient.createChangePolicyRequest(walletId, newDelegateSchedules);
   const changePolicyRequest = constructChangePolicyRequest(createChangePolicyResponse, trustVaultPublicKey);
 
-  // validate the new publicKey is in the delegate schedule & verify recovery schedule
-  changePolicyRequest.request.validate(newDelegatePublicKey);
+  // validate the new schedule is the same delegate schedule that was asked & verify recovery schedule is signed by Trustology
+  changePolicyRequest.request.validateResponse(newDelegateSchedules);
 
   return changePolicyRequest;
 };

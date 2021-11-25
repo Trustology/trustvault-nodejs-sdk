@@ -2,11 +2,14 @@ import * as validate from "bitcoin-address-validation";
 import { ec as EC } from "elliptic";
 import { isValidChecksumAddress } from "ethereumjs-util";
 import {
+  DelegateScheduleArray,
   DigestSignData,
   Environment,
   HexString,
   Integer,
   IntString,
+  PolicyScheduleArray,
+  RecovererScheduleArray,
   SignCallback,
   SignData,
   SubWalletType,
@@ -14,6 +17,7 @@ import {
   TransactionDigestData,
   TransactionSpeed,
   TRANSACTION_SPEED,
+  ValidationResult,
 } from "../types";
 
 export const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -160,4 +164,94 @@ export const isSignMessageDigestData = (
 ): unverifiedDigestData is DigestSignData => {
   const unverifiedTxDigestData = unverifiedDigestData as DigestSignData;
   return Boolean(unverifiedTxDigestData.digest);
+};
+
+// Validate a delegateSchedule is well formed
+export const validateDelegateSchedule = (schedule: DelegateScheduleArray): ValidationResult => {
+  return validateSchedule(schedule, "Delegate");
+};
+
+// Validate a recoverSchedule is well formed
+export const validateRecoverSchedule = (schedule: RecovererScheduleArray): ValidationResult => {
+  return validateSchedule(schedule, "Recoverer");
+};
+
+/**
+ * Validate a Schedule is well formed.
+ * DelegateSchedule - can be empty
+ * RecoverSchedule - cannot be empty
+ * Both schedules - must be valid array, must have valid publicKeys length in raw format (04 first byte), must have count of keys >= quorumCount > 0,
+ *
+ * @param schedules - The schedules to check
+ * @param type - "Delegate" | "Recoverer"
+ * @returns ValidationResult - listing the errors
+ */
+export const validateSchedule = (schedules: PolicyScheduleArray, type: "Delegate" | "Recoverer"): ValidationResult => {
+  const validation: ValidationResult = {
+    result: true,
+  };
+  const errorMessages: string[] = [];
+  // zero delegate which is ok
+  if (schedules.length === 0 && type === "Delegate") {
+    return validation;
+  } else if (type === "Recoverer" && schedules.length === 0) {
+    validation.result = false;
+    return validation;
+  }
+  let isValid = true;
+  // loop through schedules
+  schedules.forEach((schedule, scheduleIndex) => {
+    // must be an array of schedules
+    if (schedule instanceof Array) {
+      if (schedule.length === 0) {
+        isValid = false;
+        errorMessages.push(`${type}Schedule index ${scheduleIndex} cannot be empty`);
+      }
+      // loop through each clause
+      schedule.forEach((clause, clauseIndex) => {
+        // clause must have keys and quorumCount
+        if (!clause.keys || clause.quorumCount === undefined || !clause.keys.length) {
+          isValid = false;
+          errorMessages.push(
+            `${type}Schedule index ${scheduleIndex}, clause index ${clauseIndex} missing property 'keys', 'quorumCount or 'keys' not an array`,
+          );
+        } else {
+          if (clause.quorumCount <= 0 || clause.quorumCount > clause.keys.length) {
+            isValid = false;
+            errorMessages.push(
+              `${type}Schedule index ${scheduleIndex}, clause index ${clauseIndex} cannot have quorumCount (${clause.quorumCount}) > number of keys (${clause.keys.length}) or quorumCount <= 0`,
+            );
+          }
+          clause.keys.forEach((key) => {
+            // console.info(`${type}Schedule index ${scheduleIndex}, clause index ${clauseIndex}, key: '${key}''`);
+            if (key.length !== 130 || !key.startsWith("04")) {
+              errorMessages.push(
+                `${type}Schedule index ${scheduleIndex}, clause index ${clauseIndex}, key: '${key}' must be 130 hex characters starting with 04`,
+              );
+              isValid = false;
+            }
+          });
+        }
+      });
+    } else {
+      isValid = false;
+      errorMessages.push(`${type}Schedule index ${scheduleIndex} must be an array of clauses`);
+    }
+  });
+  validation.result = isValid;
+  validation.errors = errorMessages;
+  return validation;
+};
+
+// copies a policy extracting just the keys/quorumCount fields (in case the source policy has additional fields like __typename)
+export const copyPolicy = (source: PolicyScheduleArray) => {
+  if (validateDelegateSchedule(source).result) {
+    return source.map((schedules) => {
+      return schedules.map((clauses) => {
+        return { keys: clauses.keys, quorumCount: clauses.quorumCount };
+      });
+    });
+  }
+  console.warn(`copyPolicy failed: Invalid source policy`);
+  return undefined;
 };

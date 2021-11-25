@@ -17,6 +17,9 @@ import {
   CreateEthereumTransactionGraphQlResponse,
   CreateEthereumTransactionResponse,
   CreateEthereumTransactionVariables,
+  CreateSubWalletGraphQlResponse,
+  CreateSubWalletUnverifiedResponse,
+  CreateSubWalletVariables,
   GetRequestGraphQlResponse,
   GetRequestVariables,
   GetSubWalletGraphQlResponse,
@@ -35,6 +38,7 @@ import {
   RequestItem,
   ResultConnection,
   SubWallet,
+  SubWalletType,
   TransactionSpeed,
   TrustVaultGraphQLClientOptions,
 } from "../types";
@@ -55,9 +59,9 @@ export class TrustVaultGraphQLClient {
    */
   public async createChangePolicyRequest(
     walletId: string,
-    newDelegatePublicKey: HexString,
+    newDelegateSchedules: PolicySchedule[],
   ): Promise<CreateChangePolicyRequestResponse> {
-    const { query, variables } = this.createChangePolicyRequestMutation(walletId, newDelegatePublicKey);
+    const { query, variables } = this.createChangePolicyRequestMutation(walletId, newDelegateSchedules);
 
     const result = await executeMutation<CreateChangePolicyGraphQlResponse>(
       this.clientWithAPIKeyAuthorization,
@@ -169,6 +173,43 @@ export class TrustVaultGraphQLClient {
     };
 
     return response;
+  }
+
+  /**
+   * Private API: Use at your own risk
+   * Create a new sub-wallet
+   */
+  public async createSubWallet(
+    walletId: string,
+    name: string,
+    subWalletType: SubWalletType,
+  ): Promise<CreateSubWalletUnverifiedResponse> {
+    const { query, variables } = this.createSubWalletMutation(walletId, name, subWalletType);
+
+    const result = await executeMutation<CreateSubWalletGraphQlResponse>(
+      this.clientWithAPIKeyAuthorization,
+      query,
+      variables,
+    );
+
+    if (!result.data) {
+      throw new Error(`Unable to create subWallet: ${JSON.stringify(result)}`);
+    }
+
+    const createSubwalletResponse = result.data?.createSubWallet;
+
+    if (
+      createSubwalletResponse &&
+      createSubwalletResponse.subWalletId &&
+      createSubwalletResponse.receiveAddressDetails
+    ) {
+      const response: CreateSubWalletUnverifiedResponse = {
+        subWalletId: createSubwalletResponse?.subWalletId,
+        receiveAddressDetails: createSubwalletResponse?.receiveAddressDetails,
+      };
+      return response;
+    }
+    throw new Error(`Unable to create new subwallet: ${JSON.stringify(createSubwalletResponse)}`);
   }
 
   /**
@@ -315,20 +356,6 @@ export class TrustVaultGraphQLClient {
 
   /**
    * Private API: Use at your own risk
-   * Creates a one of one (1 delegate / 1 quorum) delegate policy schedule
-   * @param newDelegatePublicKey
-   */
-  private oneOfOneDelegateSchedule(newDelegatePublicKey: HexString): PolicySchedule {
-    return [
-      {
-        quorumCount: 1,
-        keys: [newDelegatePublicKey],
-      },
-    ];
-  }
-
-  /**
-   * Private API: Use at your own risk
    * Converts the a hdWalletPath object to a hdWalletPath array format
    * @param hdWalletPathObj
    */
@@ -376,7 +403,7 @@ export class TrustVaultGraphQLClient {
    */
   private createChangePolicyRequestMutation(
     walletId: string,
-    newDelegatePublicKey: HexString,
+    delegateSchedules: PolicySchedule[],
   ): GraphQlQueryVariable<CreateChangePolicyVariables> {
     const mutation = `
       mutation($walletId: String!, $delegateSchedules: [[ScheduleInput!]!]!) {
@@ -411,7 +438,7 @@ export class TrustVaultGraphQLClient {
     `;
     const createChangePolicyVariables: CreateChangePolicyVariables = {
       walletId,
-      delegateSchedules: [this.oneOfOneDelegateSchedule(newDelegatePublicKey)],
+      delegateSchedules,
     };
 
     return {
@@ -753,6 +780,54 @@ export class TrustVaultGraphQLClient {
 
   /**
    * Private API: Use at your own risk
+   * createSubWalletMutation graphQL query
+   * @param walletId - the id of the wallet to create the sub-wallet inside
+   * @param name - the name of the sub-wallet
+   * @parm subWalletType - The type of sub-wallet to create, e.g. which chain (ETH, BTC etc)
+   */
+  private createSubWalletMutation(
+    walletId: string,
+    name: string,
+    subWalletType: SubWalletType,
+  ): GraphQlQueryVariable<CreateSubWalletVariables> {
+    const mutation = `
+        mutation(
+          $type: SubWalletType!, 
+          $name: String!, 
+          $walletId: String!
+        ) {
+          createSubWallet(
+            createSubWalletInput: {
+                type: $type,
+                name: $name,
+                walletId: $walletId,
+            }
+          ) {
+            subWalletId
+            receiveAddressDetails{
+              addressType
+              path
+              publicKey
+              trustVaultProvenanceSignature
+              unverifiedAddress
+            }
+          }
+        }
+    `;
+    const createSubWalletVariable: CreateSubWalletVariables = {
+      walletId,
+      name,
+      type: subWalletType,
+    };
+
+    return {
+      query: mutation,
+      variables: createSubWalletVariable,
+    };
+  }
+
+  /**
+   * Private API: Use at your own risk
    * getRequestQuery graphQL query
    * @param requestId
    */
@@ -763,6 +838,11 @@ export class TrustVaultGraphQLClient {
         status
         type
         transactionHash
+        rawTransactionBytes
+        signatures {
+          der
+          raw
+        }
       }
     }`;
     const getRequestVariables: GetRequestVariables = { requestId };

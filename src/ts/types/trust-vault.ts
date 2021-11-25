@@ -1,6 +1,7 @@
+import { SubWalletType } from "./sub-wallet";
 import { BitcoinNetwork } from "./transaction";
 
-export type Environment = "production" | "sandbox";
+export type Environment = "production" | "sandbox" | "preprod";
 
 export type TrustVaultOptions = {
   environment?: Environment;
@@ -13,4 +14,10 @@ export type TrustVaultConfig = {
   url: string;
   trustVaultPublicKey: Buffer;
   bitcoinNetwork: BitcoinNetwork;
+};
+
+export type CreateSubWalletOptions = {
+  walletId: string;
+  name: string;
+  subWalletType: SubWalletType;
 };

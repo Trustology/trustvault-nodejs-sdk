@@ -1,4 +1,6 @@
 import {
+  PREPROD_API_URL,
+  PREPROD_TRUSTVAULT_PUBLIC_KEY_BUFFER,
   PRODUCTION_API_URL,
   PRODUCTION_TRUSTVAULT_PUBLIC_KEY_BUFFER,
   SANDBOX_API_URL,
@@ -15,6 +17,11 @@ export const config: { [key in Environment]: TrustVaultConfig } = {
   sandbox: {
     url: SANDBOX_API_URL,
     trustVaultPublicKey: SANDBOX_TRUSTVAULT_PUBLIC_KEY_BUFFER,
+    bitcoinNetwork: "testnet",
+  },
+  preprod: {
+    url: PREPROD_API_URL,
+    trustVaultPublicKey: PREPROD_TRUSTVAULT_PUBLIC_KEY_BUFFER,
     bitcoinNetwork: "testnet",
   },
 };

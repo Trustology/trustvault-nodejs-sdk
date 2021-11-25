@@ -10,20 +10,29 @@ import {
   createEthereumTransaction,
   processRequest,
 } from "./resources/request";
-import { verifyHmac } from "./resources/signature";
+import { verifyHmac, verifyPublicKey } from "./resources/signature";
 import { NIST_P_256_CURVE } from "./static-data";
 import {
   AllWebhookMessages,
+  CreateSubWalletOptions,
+  CreateSubWalletResponse,
+  CreateSubWalletUnverifiedResponse,
+  DelegateScheduleArray,
   Environment,
   GetSubWalletOptions,
   GetSubWalletsOptions,
   HexString,
   Integer,
   IntString,
+  PolicySchedule,
+  PublicKeyProvenance,
+  ReceiveAddressDetails,
   RequestItem,
   ResultConnection,
   SignCallback,
   SubWallet,
+  SubWalletType,
+  SUB_WALLET_TYPES,
   TransactionSpeed,
   TrustVaultOptions,
   TrustVaultRequest,
@@ -35,6 +44,8 @@ import {
   isValidSubWalletId,
   isValidTransactionSpeed,
   isValidUuid,
+  pubToChecksumAddress,
+  validateDelegateSchedule,
   validateInputs,
 } from "./utils";
 
@@ -88,12 +99,13 @@ export class TrustVault {
         const btcPayload = webhookMessage.payload;
         trustVaultRequest = constructBitcoinTransactionRequest(btcPayload.requestId, btcPayload.signData, this.env);
         // validate input publicKeys and change address
-        trustVaultRequest.request.validate(btcPayload.subWalletIdString);
+        trustVaultRequest.request.validateResponse(btcPayload.subWalletIdString);
         break;
       case "ETHEREUM_TRANSACTION_CREATED":
         const ethPayload = webhookMessage.payload;
         // no signature to validate
         trustVaultRequest = constructEthereumTransactionRequest(ethPayload.requestId, ethPayload.signData);
+
         break;
       case "ETHEREUM_PERSONAL_SIGN_CREATED":
       case "ETHEREUM_SIGN_TYPED_DATA_CREATED":
@@ -103,7 +115,7 @@ export class TrustVault {
       case "POLICY_CHANGE_REQUEST_CREATED":
         trustVaultRequest = constructChangePolicyRequest(webhookMessage.payload, this.trustVaultPublicKey);
         // validate recoverer schedules
-        trustVaultRequest.request.validate();
+        trustVaultRequest.request.validateResponse();
         break;
       default:
         // should not happen
@@ -131,6 +143,13 @@ export class TrustVault {
     if (!isValidUuid(walletId)) {
       throw new Error("Invalid walletId");
     }
+    const newDelegateSchedule = [this.oneOfOneDelegateSchedule(newPublicKey)];
+    const validateResult = validateDelegateSchedule(newDelegateSchedule);
+
+    if (!validateResult || validateResult.result === false) {
+      throw new Error(`The new delegateSchedule was not validated. Errors ${validateResult.errors}`);
+    }
+
     if (!isValidPublicKey(newPublicKey, NIST_P_256_CURVE)) {
       throw new Error("Invalid publicKey");
     }
@@ -140,7 +159,61 @@ export class TrustVault {
 
     const policyRequest = await createChangePolicyRequest(
       walletId,
-      newPublicKey,
+      newDelegateSchedule,
+      this.trustVaultPublicKey,
+      this.tvGraphQLClient,
+    );
+    if (!sign) {
+      return policyRequest.requestId;
+    }
+    return processRequest(policyRequest, sign, this.tvGraphQLClient);
+  }
+
+  /**
+   * Private API: Use at your own risk
+   * Creates a one of one (1 delegate / 1 quorum) delegate policy schedule
+   * @param newDelegatePublicKey
+   */
+  private oneOfOneDelegateSchedule(newDelegatePublicKey: HexString): PolicySchedule {
+    return [
+      {
+        quorumCount: 1,
+        keys: [newDelegatePublicKey],
+      },
+    ];
+  }
+
+  /**
+   * Creates a request to change a wallet's current delegateSchedule with the 1 of 1 delegate schedule of the passed newPublicKey
+   * NOTE:
+   * If sign callback is not given, the policy change request will not be signed and will stay
+   * in `AWAITING_SIGNATURES` status. (i.e. will not be processed until enough valid signatures are collected)
+   * @param {string} walletId - the wallet to change the current delegateSchedule
+   * @param {DelegateScheduleArray} newDelegateSchedules - the delegate schedule to be used for this wallet
+   * @param {SignCallback} [sign] - signCallback that will be called to sign the computed digest if given
+   * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses
+   */
+  public async createWalletPolicyChangeRequest(
+    walletId: string,
+    newDelegateSchedules: DelegateScheduleArray,
+    sign?: SignCallback,
+  ): Promise<string> {
+    if (!isValidUuid(walletId)) {
+      throw new Error("Invalid walletId");
+    }
+
+    const validateResult = validateDelegateSchedule(newDelegateSchedules);
+    if (!validateResult || validateResult.result === false) {
+      throw new Error(`The new delegateSchedule was not validated. Errors ${validateResult.errors}`);
+    }
+
+    if (sign && typeof sign !== "function") {
+      throw new Error("sign callback must be a function");
+    }
+
+    const policyRequest = await createChangePolicyRequest(
+      walletId,
+      newDelegateSchedules,
       this.trustVaultPublicKey,
       this.tvGraphQLClient,
     );
@@ -251,6 +324,90 @@ export class TrustVault {
       return ethTransactionRequest.requestId;
     }
     return processRequest(ethTransactionRequest, sign, this.tvGraphQLClient);
+  }
+
+  /**
+   * Create a new subWallet inside the given walletId
+   * @param {options} CreateSubWalletOptions - the unique identifier for the wallet which the new subWallet will be created inside
+   * walletId - The walletId that the new sub-wallet will be created in
+   * name - The name of the sub-wallet
+   * type - The type of sub-wallet; e.g. ETH, BTC, XDCNETWORK etc
+   */
+  public async createSubWallet(options: CreateSubWalletOptions): Promise<CreateSubWalletResponse> {
+    // validate inputs
+    if (
+      !options ||
+      !options.name ||
+      !options.walletId ||
+      !isValidUuid(options.walletId) ||
+      !SUB_WALLET_TYPES.includes(options.subWalletType as SubWalletType)
+    ) {
+      throw Error(`You must provide the walletId, name and subWalletType (Supported types: ${SUB_WALLET_TYPES})`);
+    }
+
+    // Call the backend to create the sub-wallet
+    const createSubWalletUnverifedResponse = await this.tvGraphQLClient.createSubWallet(
+      options.walletId,
+      options.name,
+      options.subWalletType,
+    );
+
+    // run some checks on the results
+    this.verifyCreateSubWalletResponse(options, createSubWalletUnverifedResponse);
+
+    // if we have got here the address has been verified, so we rename it
+    const receiveAddressDetails: ReceiveAddressDetails = {
+      path: createSubWalletUnverifedResponse.receiveAddressDetails.path,
+      publicKey: createSubWalletUnverifedResponse.receiveAddressDetails.publicKey,
+      trustVaultProvenanceSignature:
+        createSubWalletUnverifedResponse.receiveAddressDetails.trustVaultProvenanceSignature,
+      verifiedAddress: createSubWalletUnverifedResponse.receiveAddressDetails.unverifiedAddress,
+    };
+
+    const createSubWalletResponse: CreateSubWalletResponse = {
+      subWalletId: createSubWalletUnverifedResponse.subWalletId,
+      receiveAddressDetails,
+    };
+
+    return createSubWalletResponse;
+  }
+
+  private verifyCreateSubWalletResponse(
+    options: CreateSubWalletOptions,
+    input: CreateSubWalletUnverifiedResponse,
+  ): true | Error {
+    if (!input.receiveAddressDetails.trustVaultProvenanceSignature) {
+      return true;
+    }
+
+    const publicKeyProvenanceData: PublicKeyProvenance = {
+      path: input.receiveAddressDetails.path,
+      unverifiedAddress: input.receiveAddressDetails.unverifiedAddress,
+      publicKey: input.receiveAddressDetails.publicKey,
+      trustVaultProvenanceSignature: input.receiveAddressDetails.trustVaultProvenanceSignature,
+    };
+
+    // verify the publicKey came from TrustVault by using the provenance publicKey
+    verifyPublicKey(options.walletId, publicKeyProvenanceData, this.trustVaultPublicKey);
+    const verifiedPublicKey = publicKeyProvenanceData.publicKey;
+
+    // TODO - verify addresses from other chains
+    if (options.subWalletType === "ETH") {
+      const subWalletAddress = pubToChecksumAddress(verifiedPublicKey);
+      if (!subWalletAddress) {
+        throw Error(
+          `Could not generate a valid ETH sub-wallet address from the verified sub-wallet public key: ${publicKeyProvenanceData.publicKey}`,
+        );
+      } else {
+        if (subWalletAddress?.toLowerCase() !== input.receiveAddressDetails.unverifiedAddress.toLowerCase()) {
+          throw Error(
+            `Could not verfiy that the ETH sub-wallet address from TrustVault: (${publicKeyProvenanceData.unverifiedAddress}) was dervied from the sub-wallet verified public key: ${publicKeyProvenanceData.publicKey}`,
+          );
+        }
+      }
+    }
+
+    return true;
   }
 
   /**

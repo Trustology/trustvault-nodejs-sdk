@@ -105,7 +105,7 @@ export class BitcoinTransaction implements RequestClass {
    * Validates the transaction has the expected to / amount if given
    * @throws - throws an error input and the output change address is as expected
    */
-  public validate(subWalletId: string, expectedToAddress?: string, expectedAmount?: IntString): boolean {
+  public validateResponse(subWalletId: string, expectedToAddress?: string, expectedAmount?: IntString): boolean {
     const walletId = getWalletIdFromSubWalletId(subWalletId);
     // verify inputs
     this.inputs.forEach((input) => verifyPublicKey(walletId, input.publicKeyProvenanceData, this.trustVaultPublicKey));
