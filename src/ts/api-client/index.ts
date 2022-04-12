@@ -123,18 +123,22 @@ export class TrustVaultGraphQLClient {
    * @param gasPrice - optional, the gasPrice to set for the transaction, decimal integer string in WEI
    * @param gasLimit - optional, the gasLimit to set for the transaction, decimal integer string
    * @param nonce - optional, the nonce for this transaction. Use with caution.
+   * @param chainId - optional, the integer chainId for this transaction. e.g. 1 = default (mainnet), 56 = Binance Smart Chain
    * @see https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
    */
   public async createEthereumTransaction(
     fromAddress: HexString,
     toAddress: HexString,
     amount: IntString,
-    assetSymbol: string,
+    assetSymbol: string | undefined,
     speed: TransactionSpeed = "MEDIUM",
     currency: string = "GBP",
     gasPrice?: string,
     gasLimit?: string,
     nonce?: Integer,
+    chainId?: Integer,
+    sendToNetworkWhenSigned: boolean = true,
+    sendToDevicesForSigning: boolean = true,
   ): Promise<CreateEthereumTransactionResponse> {
     const { query, variables } = this.createEthereumTransactionMutation(
       fromAddress,
@@ -146,6 +150,9 @@ export class TrustVaultGraphQLClient {
       gasLimit,
       currency,
       nonce,
+      chainId,
+      sendToNetworkWhenSigned,
+      sendToDevicesForSigning,
     );
 
     const result = await executeMutation<CreateEthereumTransactionGraphQlResponse>(
@@ -684,21 +691,22 @@ export class TrustVaultGraphQLClient {
     from: HexString,
     to: HexString,
     value: IntString,
-    assetSymbol: string,
+    assetSymbol: string | undefined,
     speed: TransactionSpeed = "MEDIUM",
     gasPrice?: IntString,
     gasLimit?: IntString,
     currency: string = "GBP",
     nonce?: Integer,
-    sendToDevicesForSigning: boolean = true,
+    chainId?: Integer,
     sendToNetworkWhenSigned: boolean = true,
+    sendToDevicesForSigning: boolean = true,
   ): GraphQlQueryVariable<CreateEthereumTransactionVariables> {
     const mutation = `
       mutation (
           $from: String!
           $to: String!
           $value: String!
-          $assetSymbol: String!
+          $assetSymbol: String
           $speed: TransactionSpeed
           $currency: String
           $sendToNetworkWhenSigned: Boolean
@@ -706,6 +714,7 @@ export class TrustVaultGraphQLClient {
           $gasLimit: String
           $gasPrice: String
           $nonce: Int
+          $chainId: Int
       ) {
         createEthereumTransaction(
           createTransactionInput: {
@@ -718,6 +727,7 @@ export class TrustVaultGraphQLClient {
               gasLimit: $gasLimit
               gasPrice: $gasPrice
               nonce: $nonce
+              chainId: $chainId
             }
             source: "API"
             currency: $currency
@@ -770,6 +780,7 @@ export class TrustVaultGraphQLClient {
       nonce,
       sendToNetworkWhenSigned,
       sendToDevicesForSigning,
+      chainId,
     };
 
     return {

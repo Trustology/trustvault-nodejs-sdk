@@ -70,7 +70,7 @@ export const validateInputs = (
   fromAddress: HexString,
   toAddress: HexString,
   amount: IntString,
-  assetSymbol: string,
+  assetSymbol: string | undefined,
   currency: string,
   speed?: TransactionSpeed,
   gasPrice?: string,
@@ -88,7 +88,7 @@ export const validateInputs = (
   if (!isValidIntString(amount)) {
     throw new Error(`Invalid amount, must be string e.g. "100"`);
   }
-  if (typeof assetSymbol !== "string") {
+  if (assetSymbol !== undefined && typeof assetSymbol !== "string") {
     throw new Error("Invalid assetSymbol");
   }
   if (!isValidGasLimit(gasLimit)) {

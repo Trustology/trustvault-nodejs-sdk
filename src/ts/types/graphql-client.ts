@@ -52,7 +52,7 @@ export interface CreateEthereumTransactionVariables {
   from: HexString;
   to: HexString;
   value: IntString;
-  assetSymbol: string;
+  assetSymbol?: string;
   speed?: TransactionSpeed;
   gasPrice?: string;
   gasLimit?: string;
@@ -60,6 +60,7 @@ export interface CreateEthereumTransactionVariables {
   nonce?: Integer;
   sendToNetworkWhenSigned: boolean;
   sendToDevicesForSigning: boolean;
+  chainId?: Integer;
 }
 
 export interface CreateSubWalletVariables {

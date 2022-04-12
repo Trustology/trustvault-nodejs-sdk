@@ -5,13 +5,20 @@ import { HdWalletPath, SubWalletId } from "./sub-wallet";
 import { BitcoinSignData, EthereumSignData } from "./transaction";
 
 export type AllWebhookMessages =
-  | EthereumTransactionWebhookMessage
+  | EvmTransactionCreatedWebhookMessages
   | EthereumPersonalSignWebhookMessage
   | EthereumSignTypedDataWebhookMessage
   | BitcoinTransactionWebhookMessage
   | PolicyChangeRequestWebhookMessage;
 
 export declare type TransactionWebhookMessages = EthereumTransactionWebhookMessage | BitcoinTransactionWebhookMessage;
+
+export declare type EvmTransactionCreatedWebhookMessages =
+  | EthereumTransactionWebhookMessage
+  | BscTransactionWebhookMessage
+  | PolygonTransactionWebhookMessage
+  | AvalancheTransactionWebhookMessage
+  | UnsupportedEvmTransactionWebhookMessage;
 
 // Policy Change
 
@@ -72,6 +79,26 @@ export interface EthereumSignMessageData {
 export type EthereumTransactionWebhookMessage = WebhookMessage<
   EthereumTransactionCreated,
   "ETHEREUM_TRANSACTION_CREATED"
+>;
+
+export type BscTransactionWebhookMessage = WebhookMessage<
+  EthereumTransactionCreated,
+  "BINANCE_SMART_CHAIN_TRANSACTION_CREATED"
+>;
+
+export type PolygonTransactionWebhookMessage = WebhookMessage<
+  EthereumTransactionCreated,
+  "POLYGON_TRANSACTION_CREATED"
+>;
+
+export type UnsupportedEvmTransactionWebhookMessage = WebhookMessage<
+  EthereumTransactionCreated,
+  "UNSUPPORTED_ETHEREUM_TRANSACTION_CREATED"
+>;
+
+export type AvalancheTransactionWebhookMessage = WebhookMessage<
+  EthereumTransactionCreated,
+  "AVALANCHE_TRANSACTION_CREATED"
 >;
 
 export type EthereumPersonalSignWebhookMessage = WebhookMessage<
@@ -139,6 +166,11 @@ export interface WebhookMessage<T extends AllWebhookTransactionCreatedEvents, U 
 export type EthereumSignMessageWebhookType = "ETHEREUM_PERSONAL_SIGN_CREATED" | "ETHEREUM_SIGN_TYPED_DATA_CREATED";
 
 export type WebhookMessageType =
+  | "AVALANCHE_TRANSACTION_CREATED"
+  | "UNSUPPORTED_ETHEREUM_TRANSACTION_CREATED"
+  | "FANTOM_TRANSACTION_CREATED"
+  | "POLYGON_TRANSACTION_CREATED"
+  | "BINANCE_SMART_CHAIN_TRANSACTION_CREATED"
   | "ETHEREUM_TRANSACTION_CREATED"
   | EthereumSignMessageWebhookType
   | "BITCOIN_TRANSACTION_CREATED"

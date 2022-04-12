@@ -2,7 +2,7 @@ import { GraphQLError } from "graphql";
 import { HexString, Integer, IsoDateString, Nullable, NumString } from "./data";
 import { UnverifiedReceiveAddressDetails } from "./graphql-client";
 
-export const BLOCKCHAIN_TYPES = ["BTC", "ETH", "BINANCE", "RADIX", "XDCNETWORK"] as const; // NOTE: "BINANCE" is used rather than "BNB" on subWalletType
+export const BLOCKCHAIN_TYPES = ["BTC", "ETH", "BINANCE", "RADIX", "XDCNETWORK", "BINANCE_SMART_CHAIN"] as const; // NOTE: "BINANCE" is used rather than "BNB" on subWalletType
 export const SUB_WALLET_TYPES = [...BLOCKCHAIN_TYPES] as const;
 export type SubWalletType = typeof SUB_WALLET_TYPES[number];
 
