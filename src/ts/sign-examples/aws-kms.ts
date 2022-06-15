@@ -24,6 +24,9 @@ export interface KeyStore {
 /**
  * This class is an example class for wrapping an AWS KMS Key
  * This will ensure that the key is in a usable state and uses the correct key signing alogrithm
+ * NOTE:
+ * All methods here MUST be a defined using arrow functions so the `this` context gets correctly
+ * bound to the class and not get lost when the methods are passed to another function
  */
 export class AwsKmsKeyStore implements KeyStore {
   // The AWS KMS publicKey is returned in DER format which matches the SubjectPublicKeyInfo of this ASN.1 spec
@@ -43,7 +46,7 @@ export class AwsKmsKeyStore implements KeyStore {
    * @param message
    * @param shaDigest
    */
-  public async sign({ signData }: SignDataBuffer): Promise<PublicKeySignaturePairBuffer> {
+  public sign = async ({ signData }: SignDataBuffer): Promise<PublicKeySignaturePairBuffer> => {
     const message = signData;
     // validate this KMS key can be used for TrustVault signing operations
     if (!this.validated) {
@@ -86,13 +89,13 @@ export class AwsKmsKeyStore implements KeyStore {
       console.error(`Error Signing Data: ${JSON.stringify({ message, stack, code })}`);
     }
     throw Error(`SIGNATURE_ERROR: Signature not returned`);
-  }
+  };
 
   /**
    * Returns the publicKey associated with this KMS key. The key required for TrustVault is in uncompressed format
    * i.e. `04` hex prefixed + 64 bytes
    */
-  public async getPublicKey(): Promise<Buffer> {
+  public getPublicKey = async (): Promise<Buffer> => {
     if (!this.validated) {
       await this.validate();
     }
@@ -128,7 +131,7 @@ export class AwsKmsKeyStore implements KeyStore {
       throw Error("PublicKeyEncodingError: PublicKey could not be decoded correctly or was not retrieved from AWS");
     }
     throw Error("PublicKeyNotFound: PublicKey could not be decoded or incorrect publicKey type");
-  }
+  };
 
   /**
    * Validate this KMS Key is a valid key for suitable signing for TrustVault
