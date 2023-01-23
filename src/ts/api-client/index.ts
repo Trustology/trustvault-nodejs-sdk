@@ -42,14 +42,20 @@ import {
   TransactionSpeed,
   TrustVaultGraphQLClientOptions,
 } from "../types";
-import { AppSyncClient, createAppSyncClient, executeMutation, executeQuery } from "./graphql-client";
+import { GraphQLClientAPIKey, GraphQLClientOptionsApiKey } from "./graphql-client";
 
 /* Private API. Use at your own risk, liable to change */
 export class TrustVaultGraphQLClient {
-  private clientWithAPIKeyAuthorization: AppSyncClient;
+  private graphQLClient: GraphQLClientAPIKey;
 
   constructor({ apiKey, url, timeout }: TrustVaultGraphQLClientOptions) {
-    this.clientWithAPIKeyAuthorization = createAppSyncClient(timeout, url, apiKey);
+    const options: GraphQLClientOptionsApiKey = {
+      clientName: "TrustAPI",
+      apiKey,
+      url,
+      timeout,
+    };
+    this.graphQLClient = new GraphQLClientAPIKey(options);
   }
 
   /**
@@ -63,11 +69,7 @@ export class TrustVaultGraphQLClient {
   ): Promise<CreateChangePolicyRequestResponse> {
     const { query, variables } = this.createChangePolicyRequestMutation(walletId, newDelegateSchedules);
 
-    const result = await executeMutation<CreateChangePolicyGraphQlResponse>(
-      this.clientWithAPIKeyAuthorization,
-      query,
-      variables,
-    );
+    const result = await this.graphQLClient.executeMutation<CreateChangePolicyGraphQlResponse>(query, variables);
     if (!result.data) {
       throw new Error(`Unable to create authorisation request: ${JSON.stringify(result)}`);
     }
@@ -91,11 +93,7 @@ export class TrustVaultGraphQLClient {
   ): Promise<CreateBitcoinTransactionIdResponse> {
     const { query, variables } = this.createBitcoinTransactionMutation(subWalletId, toAddress, amount, speed);
 
-    const result = await executeMutation<CreateBitcoinTransactionGraphQlResponse>(
-      this.clientWithAPIKeyAuthorization,
-      query,
-      variables,
-    );
+    const result = await this.graphQLClient.executeMutation<CreateBitcoinTransactionGraphQlResponse>(query, variables);
     if (
       !result.data?.createBitcoinTransaction.signData?.transaction ||
       !result.data?.createBitcoinTransaction.requestId
@@ -124,7 +122,7 @@ export class TrustVaultGraphQLClient {
    * @param gasLimit - optional, the gasLimit to set for the transaction, decimal integer string
    * @param nonce - optional, the nonce for this transaction. Use with caution.
    * @param chainId - optional, the integer chainId for this transaction. e.g. 1 = default (mainnet), 56 = Binance Smart Chain
-   * @see https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
+   * @see https://help.bitpandacustody.com/en/articles/3123653-what-token-s-do-we-support
    */
   public async createEthereumTransaction(
     fromAddress: HexString,
@@ -155,11 +153,7 @@ export class TrustVaultGraphQLClient {
       sendToDevicesForSigning,
     );
 
-    const result = await executeMutation<CreateEthereumTransactionGraphQlResponse>(
-      this.clientWithAPIKeyAuthorization,
-      query,
-      variables,
-    );
+    const result = await this.graphQLClient.executeMutation<CreateEthereumTransactionGraphQlResponse>(query, variables);
 
     const createEthereumTransactionResponse = result.data?.createEthereumTransaction;
     const signData = createEthereumTransactionResponse?.signData;
@@ -193,11 +187,7 @@ export class TrustVaultGraphQLClient {
   ): Promise<CreateSubWalletUnverifiedResponse> {
     const { query, variables } = this.createSubWalletMutation(walletId, name, subWalletType);
 
-    const result = await executeMutation<CreateSubWalletGraphQlResponse>(
-      this.clientWithAPIKeyAuthorization,
-      query,
-      variables,
-    );
+    const result = await this.graphQLClient.executeMutation<CreateSubWalletGraphQlResponse>(query, variables);
 
     if (!result.data) {
       throw new Error(`Unable to create subWallet: ${JSON.stringify(result)}`);
@@ -227,11 +217,7 @@ export class TrustVaultGraphQLClient {
   public async createBitcoinReceiveAddress(subWalletId: string): Promise<string> {
     const { query, variables } = this.createBitcoinAddressMutation(subWalletId);
 
-    const result = await executeMutation<CreateBitcoinAddressGraphQlResponse>(
-      this.clientWithAPIKeyAuthorization,
-      query,
-      variables,
-    );
+    const result = await this.graphQLClient.executeMutation<CreateBitcoinAddressGraphQlResponse>(query, variables);
     if (!result.data) {
       throw new Error(`Unable to create bitcoin address: ${JSON.stringify(result)}`);
     }
@@ -246,7 +232,7 @@ export class TrustVaultGraphQLClient {
   public async getSubWallets(includeBalances?: boolean): Promise<SubWallet[]> {
     const { query } = this.getSubWalletsQuery(includeBalances);
 
-    const result = await executeQuery<GetSubWalletsGraphQlResponse>(this.clientWithAPIKeyAuthorization, query);
+    const result = await this.graphQLClient.executeQuery<GetSubWalletsGraphQlResponse>(query);
     if (!result.data) {
       throw new Error(`Unable to get sub-wallets: ${JSON.stringify(result)}`);
     }
@@ -262,11 +248,7 @@ export class TrustVaultGraphQLClient {
     const { limit, nextToken, includeBalances } = options;
     const { query, variables } = this.getSubWalletsQuery(includeBalances, limit, nextToken);
 
-    const result = await executeQuery<GetSubWalletsGraphQlResponse>(
-      this.clientWithAPIKeyAuthorization,
-      query,
-      variables,
-    );
+    const result = await this.graphQLClient.executeQuery<GetSubWalletsGraphQlResponse>(query, variables);
     if (!result.data) {
       throw new Error(`Unable to get sub-wallets: ${JSON.stringify(result)}`);
     }
@@ -287,11 +269,7 @@ export class TrustVaultGraphQLClient {
     if (subWalletId) {
       const { query, variables } = this.getSubWalletQuery(subWalletId, includeBalances);
 
-      const result = await executeQuery<GetSubWalletGraphQlResponse>(
-        this.clientWithAPIKeyAuthorization,
-        query,
-        variables,
-      );
+      const result = await this.graphQLClient.executeQuery<GetSubWalletGraphQlResponse>(query, variables);
       if (!result.data) {
         throw new Error(`Unable to get sub-wallet for ${subWalletId}: ${JSON.stringify(result)}`);
       }
@@ -309,11 +287,7 @@ export class TrustVaultGraphQLClient {
   public async addSignature(addSignaturePayload: AddSignaturePayload): Promise<string> {
     const { query } = this.addSignatureMutation(addSignaturePayload);
 
-    const result = await executeMutation<AddSignatureGraphQlResponse>(
-      this.clientWithAPIKeyAuthorization,
-      query,
-      addSignaturePayload,
-    );
+    const result = await this.graphQLClient.executeMutation<AddSignatureGraphQlResponse>(query, addSignaturePayload);
     if (!result.data) {
       throw new Error(
         `Unable to add signature to requestId ${addSignaturePayload.requestId}: ${JSON.stringify(result)}`,
@@ -331,7 +305,7 @@ export class TrustVaultGraphQLClient {
   public async getRequest(requestId: string): Promise<RequestItem> {
     const { query, variables } = this.getRequestQuery(requestId);
 
-    const result = await executeQuery<GetRequestGraphQlResponse>(this.clientWithAPIKeyAuthorization, query, variables);
+    const result = await this.graphQLClient.executeQuery<GetRequestGraphQlResponse>(query, variables);
     if (!result.data) {
       throw new Error(`Unable to get request: ${JSON.stringify(result)}`);
     }
@@ -347,11 +321,7 @@ export class TrustVaultGraphQLClient {
   public async cancelRequest(requestId: string, reason?: string): Promise<string> {
     const { query, variables } = this.cancelRequestMutation(requestId, reason);
 
-    const result = await executeQuery<CancelRequestGraphQlResponse>(
-      this.clientWithAPIKeyAuthorization,
-      query,
-      variables,
-    );
+    const result = await this.graphQLClient.executeQuery<CancelRequestGraphQlResponse>(query, variables);
     if (!result.data?.cancelRequest.requestId) {
       throw new Error(`Unable to cancel request: ${JSON.stringify(result)}`);
     }

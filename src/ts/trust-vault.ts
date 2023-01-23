@@ -137,7 +137,7 @@ export class TrustVault {
    * @param {string} walletId - the wallet to change the current delegateSchedule
    * @param {HexString} newPublicKey - the publicKey to be the new delegate of the wallet (04 prefixed 128 characters hex string)
    * @param {SignCallback} [sign] - signCallback that will be called to sign the computed digest if given
-   * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses
+   * @see https://developer.bitpandacustody.com/trust-vault-nodejs-sdk.html#request-statuses
    */
   public async replacePublicKeyInDefaultSchedule(
     walletId: string,
@@ -195,7 +195,7 @@ export class TrustVault {
    * @param {string} walletId - the wallet to change the current delegateSchedule
    * @param {DelegateScheduleArray} newDelegateSchedules - the delegate schedule to be used for this wallet
    * @param {SignCallback} [sign] - signCallback that will be called to sign the computed digest if given
-   * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses
+   * @see https://developer.bitpandacustody.com/trust-vault-nodejs-sdk.html#request-statuses
    */
   public async createWalletPolicyChangeRequest(
     walletId: string,
@@ -238,7 +238,7 @@ export class TrustVault {
    * @param {"SLOW"|"MEDIUM"|"FAST"} speed - defaults to 'MEDIUM'
    * @param {SignCallback} [sign] - signCallback that will be called to sign the computed digest(s) if given
    * @returns {String} requestId - the unique identifier for the request
-   * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses
+   * @see https://developer.bitpandacustody.com/trust-vault-nodejs-sdk.html#request-statuses
    */
   public async sendBitcoin(
     subWalletId: string,
@@ -296,8 +296,8 @@ export class TrustVault {
    * @param nonce - optional, the integer nonce for this transaction. Use with caution.
    * @param chainId - optional, the integer chainId for this transaction. e.g. 1 = default (mainnet), 56 = Binance Smart Chain
    * @returns {String} requestId - the unique identifier for the request
-   * @see https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
-   * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses
+   * @see https://help.bitpandacustody.com/en/articles/3123653-what-token-s-do-we-support
+   * @see https://developer.bitpandacustody.com/trust-vault-nodejs-sdk.html#request-statuses
    */
   public async sendEthereum(
     fromAddress: HexString,
@@ -479,7 +479,7 @@ export class TrustVault {
    * Cancels a request item associated with the given requestId. If successful, the request will be in `USER_CANCELLED` status
    * An error will be throw if the request is not in a state that can be cancelled (i.e. not `AWAITING_SIGNATURES`)
    * @param {string} requestId - the unique identifier for the request
-   * @see https://developer.trustology.io/trust-vault-nodejs-sdk.html#request-statuses
+   * @see https://developer.bitpandacustody.com/trust-vault-nodejs-sdk.html#request-statuses
    */
   public async cancelRequest(requestId: string, reason?: string): Promise<boolean> {
     if (!isValidUuid(requestId)) {

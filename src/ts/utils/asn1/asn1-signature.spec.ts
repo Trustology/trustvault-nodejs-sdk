@@ -1,14 +1,14 @@
 import * as chai from "chai";
-import * as dirtyChai from "dirty-chai";
+import dirtyChai from "dirty-chai";
 import { decodePublicKey, decodeSignature, encodeProvenance } from "./asn1-der";
 import {
   TEST_PROVENANCE,
   TEST_PROVENANCE_DER,
   TEST_PROVENANCE_IN_HEX,
   TEST_PUBLICKEY_DER,
+  TEST_SIGNATURE,
+  TEST_SIGNATURE_DER,
   TEST_SUBJECT_PUBLICKEY_INFO,
-  TEST_TRUSTOLOGY_SIGNATURE,
-  TEST_TRUSTOLOGY_SIGNATURE_DER,
 } from "./asn1-test-data.spec";
 
 chai.use(dirtyChai);
@@ -21,8 +21,8 @@ describe("🔥🔥🔥 ASN1 DER PublicKey decoder tests🔥🔥🔥", () => {
   });
 
   it("decode Signature schema", () => {
-    const x = decodeSignature(TEST_TRUSTOLOGY_SIGNATURE_DER);
-    expect(x).to.deep.equals(TEST_TRUSTOLOGY_SIGNATURE);
+    const x = decodeSignature(TEST_SIGNATURE_DER);
+    expect(x).to.deep.equals(TEST_SIGNATURE);
   });
 });
 

@@ -1,15 +1,19 @@
-import { InMemoryCache, NormalizedCacheObject } from "apollo-cache-inmemory";
-import { ApolloClient } from "apollo-client";
-import { createHttpLink } from "apollo-link-http";
-import { AUTH_TYPE, createAppSyncLink } from "aws-appsync";
-import { config, Credentials } from "aws-sdk";
-import * as fs from "fs";
-import * as gql from "graphql-tag";
+/* tslint:disable no-submodule-imports */
+import {
+  ApolloClient,
+  ApolloClientOptions,
+  ApolloLink,
+  gql,
+  HttpLink,
+  InMemoryCache,
+  NormalizedCacheObject,
+  OperationVariables,
+} from "@apollo/client/core";
+/* tslint:disable no-submodule-imports */
+import { setContext } from "@apollo/client/link/context";
+import fetch from "cross-fetch";
 import * as http from "http";
 import * as https from "https";
-import * as fetch from "node-fetch";
-
-export type AppSyncClient = ApolloClient<NormalizedCacheObject>;
 
 const HTTPS_PROTOCOL = "https:";
 const AGENT_ARGS = {
@@ -19,111 +23,167 @@ const AGENT_ARGS = {
 const HTTP_AGENT = new http.Agent(AGENT_ARGS);
 const HTTPS_AGENT = new https.Agent(AGENT_ARGS);
 
-let packageJson;
-try {
-  // for in parent dir when built
-  packageJson = fs.readFileSync("../package.json", "utf8");
-} catch (e) {
-  // look in local dir for dev
-  packageJson = fs.readFileSync("./package.json", "utf8");
-}
+const LOG_NAME = "graphql-client";
 
-const { version } = JSON.parse(packageJson);
-// Don't use this as it caused TS to complile a different directory structure
-// import { version } from "../../../package.json";
+export type GraphQLClientType = "ECS" | "BCS" | "TAPI" | "XS" | "AMLS" | "AC" | "RDS" | "XCS" | "BSCS" | string;
 
-const trustVaultSDKVerson = `TrustVaultSDK/${version}`;
+export type GraphQlClientOptions = {
+  url: string;
+  clientName: GraphQLClientType;
+  timeout: number;
+};
+
+export type GraphQLClientOptionsApiKey = GraphQlClientOptions & {
+  apiKey: string;
+};
+
+const partialOptions: ApolloClientOptions<NormalizedCacheObject> = {
+  cache: new InMemoryCache({ addTypename: false }),
+  defaultOptions: {
+    watchQuery: {
+      fetchPolicy: "no-cache",
+      errorPolicy: "all",
+    },
+    query: {
+      fetchPolicy: "no-cache",
+      errorPolicy: "all",
+    },
+  },
+};
 
 /**
- * Create an ApolloClient that connects to the given AppSync url. By default this method will use IAM security to access
- * the api and the credentials will be those stored in the global AWS config object. The region stored in the global AWS
- * config object will also be used. These default values can be overridden by:
- *
- * @param url The AppSync endpoint to connect to
- * @param apiKeyOrCredentials Set to a string to switch to API_KEY access or a set of credentials to use the non-default
- * credentials with IAM based access
- * @param region Override the default region in the AWS config object
+ * Abstract class for talking to a GraphQL backend. Use the concrete implementations
  */
-export const createAppSyncClient = (
-  timeout = 0,
-  url: string,
-  apiKeyOrCredentials?: string | Credentials,
-  region?: string,
-) => {
-  let authType = AUTH_TYPE.AWS_IAM;
-  let credentials = config.credentials;
-  let apiKey: string | Credentials | undefined;
+export abstract class GraphQLClient {
+  private clientName: GraphQLClientType = "CLIENT";
+  private client: ApolloClient<NormalizedCacheObject>;
+  protected url: string;
+  protected timeout: number;
 
-  if (typeof apiKeyOrCredentials === "string") {
-    authType = AUTH_TYPE.API_KEY;
-    credentials = undefined as any;
-    apiKey = apiKeyOrCredentials;
-  } else if (typeof apiKeyOrCredentials === "object") {
-    credentials = apiKeyOrCredentials;
+  constructor(options: GraphQlClientOptions) {
+    if (options.clientName) {
+      this.clientName = options.clientName;
+    }
+    this.url = options.url;
+    this.timeout = options.timeout;
+    const link = this.getLink();
+    const graphqlOptions = { ...partialOptions, link };
+    this.client = new ApolloClient<NormalizedCacheObject>(graphqlOptions);
   }
 
-  const link = createAppSyncLink({
-    url,
-    region: region || (config.region as string),
-    auth: {
-      type: authType,
-      credentials,
-      apiKey,
-    } as any,
-    complexObjectsCredentials: credentials as any,
-    resultsFetcherLink: createHttpLink({
+  /**
+   * Required by the subclass implementation to return the correct ApolloLink to make connections
+   */
+  protected abstract getLink(): ApolloLink;
+
+  protected createHttpLink = (url: string, timeout: number = 0) => {
+    const httpLink = new HttpLink({
       uri: url,
-      fetch: (fetch as any) as GlobalFetch["fetch"],
+      fetch: fetch as any,
       fetchOptions: {
         timeout,
-        agent: (_parsedURL: URL) => {
-          if (_parsedURL.protocol === HTTPS_PROTOCOL) {
+        agent: (parsedURL: URL) => {
+          if (parsedURL.protocol === HTTPS_PROTOCOL) {
             return HTTPS_AGENT;
           } else {
             return HTTP_AGENT;
           }
         },
       },
-    }),
-  });
+    });
+    return httpLink;
+  };
 
-  return new ApolloClient({
-    cache: new InMemoryCache({
-      addTypename: true,
-    }),
-    link,
-    defaultOptions: {
-      watchQuery: {
-        fetchPolicy: "no-cache",
-        errorPolicy: "ignore",
-      },
-      query: {
-        fetchPolicy: "no-cache",
-        errorPolicy: "all",
-      },
-    },
-  });
-};
+  /**
+   * See README.md
+   * execute the query. Throws for:
+   * - network errors (400 return codes)
+   * - timeouts
+   * @param query
+   * @returns
+   */
+  public executeQuery = async <T>(query: string, variables?: OperationVariables) => {
+    try {
+      return await this.client.query<T>({ query: gql.default(query), variables });
+    } catch (e) {
+      // Log these error in case the caller doesn't bother
+      const errorMessage = this.clientName ?? "";
+      console.error(
+        `${LOG_NAME}: Calling ${errorMessage}, failed: (${(e as Error).message}) when executing query:\n${query}`,
+      );
+      console.debug(`${LOG_NAME}: Error: ${JSON.stringify(e, Object.getOwnPropertyNames(e))}`);
+      throw e;
+    }
+  };
 
-export const executeMutation = async <T = any>(client: AppSyncClient, mutation: string, variables?: {}) => {
-  return client.mutate<T>({
-    context: {
-      headers: {
-        "x-trust-user-agent": trustVaultSDKVerson,
-      },
-    },
-    mutation: gql.default(mutation),
-    variables,
-  });
-};
+  /**
+   * See README.md
+   * execute the mutation. Throws for:
+   * - network errors (400 return codes)
+   * - timeouts
+   * - server response errors from the mutation
+   * @param query
+   * @returns
+   */
+  public executeMutation = async <T>(mutation: string, variables?: OperationVariables) => {
+    try {
+      return await this.client.mutate<T>({
+        mutation: gql.default(mutation),
+        variables,
+      });
+    } catch (e) {
+      // Log these error in case the caller doesn't bother
+      const errorMessage = this.clientName ?? "";
+      console.error(
+        `${LOG_NAME}: Calling ${errorMessage}, failed: (${(e as Error).message}) when executing mutation:\n${mutation}`,
+      );
+      console.debug(`${LOG_NAME}: Error: ${JSON.stringify(e, Object.getOwnPropertyNames(e))}`);
+      throw e;
+    }
+  };
+}
 
-export const executeQuery = async <T = any>(client: AppSyncClient, query: string, variables?: {}) =>
-  client.query<T>({
-    context: {
-      headers: {
-        "x-trust-user-agent": trustVaultSDKVerson,
-      },
-    },
-    query: gql.default(query),
-    variables,
+// link to add start time
+const timeStartLink = new ApolloLink((operation, forward) => {
+  operation.setContext({ start: new Date().getTime() });
+  console.info(`${LOG_NAME}: query: ${operation.query.loc?.source.body}`);
+  console.info(`${LOG_NAME}: variables: ${JSON.stringify(operation.variables)}`);
+  return forward(operation);
+});
+
+// link to compute end time and execution time
+const logTimeLink = new ApolloLink((operation, forward) => {
+  return forward(operation).map((data) => {
+    // data from a previous link
+    const dateTime = new Date().getTime();
+    const time = dateTime - operation.getContext().start;
+    console.info(`${LOG_NAME}: Operation "${operation.operationName}" took ${time}ms to complete`);
+    return data;
   });
+});
+
+/**
+ * Use this class to make an API Key based connection to a GraphQL server
+ */
+export class GraphQLClientAPIKey extends GraphQLClient {
+  private apiKey: string;
+
+  constructor(options: GraphQLClientOptionsApiKey) {
+    super(options);
+    this.apiKey = options.apiKey;
+  }
+
+  protected getLink(): ApolloLink {
+    // Set the API Key to the header
+    const authLink = setContext((_, { headers }) => {
+      // return the headers to the context so httpLink can read them
+      const currentHeaders = { ...headers };
+      currentHeaders["x-api-key"] = this.apiKey;
+      return {
+        headers: currentHeaders,
+      };
+    });
+
+    return ApolloLink.from([timeStartLink, authLink, logTimeLink, this.createHttpLink(this.url, this.timeout)]);
+  }
+}

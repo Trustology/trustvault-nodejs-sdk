@@ -1,13 +1,9 @@
 import { fail } from "assert";
 import * as AWSMock from "aws-sdk-mock";
 import * as chai from "chai";
-import * as dirtyChai from "dirty-chai";
+import dirtyChai from "dirty-chai";
 import { SignDataBuffer } from "../types/signature";
-import {
-  TEST_SUBJECT_PUBLICKEY_INFO,
-  TEST_TRUSTOLOGY_SIGNATURE,
-  TEST_TRUSTOLOGY_SIGNATURE_DER,
-} from "../utils/asn1/asn1-test-data.spec";
+import { TEST_SIGNATURE, TEST_SIGNATURE_DER, TEST_SUBJECT_PUBLICKEY_INFO } from "../utils/asn1/asn1-test-data.spec";
 import { AwsKmsKeyStore } from "./aws-kms";
 import { mockKMSDescribe, mockKMSPublicKey, mockKMSSign } from "./test-data";
 
@@ -43,7 +39,7 @@ describe("AWS KMS Tests", () => {
         await keyStore.getPublicKey();
         fail("KMS Key enabled = false did not throw an error");
       } catch (e) {
-        expect(e.message).to.be.equal("Key dummyKey is not enabled");
+        expect((e as Error).message).to.be.equal("Key dummyKey is not enabled");
       }
     });
     it("It should fail if KMS key is not correct usage type", async () => {
@@ -56,7 +52,7 @@ describe("AWS KMS Tests", () => {
         await keyStore.getPublicKey();
         fail("KMS Key should have failed, but did not ");
       } catch (e) {
-        expect(e.message).to.be.equal("Key dummyKey does not have the correct usage type.");
+        expect((e as Error).message).to.be.equal("Key dummyKey does not have the correct usage type.");
       }
     });
   });
@@ -65,23 +61,23 @@ describe("AWS KMS Tests", () => {
       // mock the KSM responses
       mockKMSDescribe();
       mockKMSPublicKey();
-      mockKMSSign("ECDSA_SHA_256", TEST_TRUSTOLOGY_SIGNATURE_DER);
+      mockKMSSign("ECDSA_SHA_256", TEST_SIGNATURE_DER);
 
       try {
         const keyStore = new AwsKmsKeyStore("dummyKey");
         // AWS KMS DUMMY parameters
         const params: SignDataBuffer = {
-          signData: TEST_TRUSTOLOGY_SIGNATURE_DER,
+          signData: TEST_SIGNATURE_DER,
           // The SHA256 digest of the signData
-          shaSignData: TEST_TRUSTOLOGY_SIGNATURE_DER, // This is not used for this test but in reality will be SHA256(TEST_TRUSTOLOGY_SIGNATURE_DER)
+          shaSignData: TEST_SIGNATURE_DER, // This is not used for this test but in reality will be SHA256(TEST_SIGNATURE_DER)
         };
         const signedDataResponse = await keyStore.sign(params);
 
         expect(signedDataResponse.publicKey.toString("hex")).to.equal(
           TEST_SUBJECT_PUBLICKEY_INFO.subjectPublicKey.toString("hex"),
         );
-        expect(signedDataResponse.signature.slice(0, 32)).to.deep.equal(TEST_TRUSTOLOGY_SIGNATURE.r);
-        expect(signedDataResponse.signature.slice(32)).to.deep.equal(TEST_TRUSTOLOGY_SIGNATURE.s);
+        expect(signedDataResponse.signature.slice(0, 32)).to.deep.equal(TEST_SIGNATURE.r);
+        expect(signedDataResponse.signature.slice(32)).to.deep.equal(TEST_SIGNATURE.s);
       } catch (e) {
         fail(`Validation did not pass ${JSON.stringify(e)}`);
       }
@@ -103,7 +99,7 @@ describe("AWS KMS Tests", () => {
         const keyStore = new AwsKmsKeyStore("dummyKey");
         await keyStore.getPublicKey();
       } catch (e) {
-        expect(e.message).to.be.equal(
+        expect((e as Error).message).to.be.equal(
           "Key dummyKey has an unknown validation error: PublicKeyNotFound: PublicKey could not be decoded or incorrect publicKey type",
         );
       }

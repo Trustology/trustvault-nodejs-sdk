@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import {
   address,
+  bool,
   bytes,
   bytes1,
   bytes10,
@@ -36,6 +37,7 @@ import {
   bytes9,
   decode,
   encode,
+  getType,
   int,
   int104,
   int112,
@@ -69,6 +71,7 @@ import {
   int80,
   int88,
   int96,
+  string,
   uint,
   uint104,
   uint112,
@@ -102,23 +105,24 @@ import {
   uint80,
   uint88,
   uint96,
-  _string,
 } from "./solidity-types";
 
-const testUint256 = (n: bigint) => n.toString(16).padStart(64, "0");
-const testBytes32 = (s: string) => Buffer.from(s).toString("hex").padEnd(64, "0");
+/* tslint:disable variable-name */
+const _uint256 = (n: bigint) => n.toString(16).padStart(64, "0");
+/* tslint:disable variable-name */
+const _bytes32 = (s: string) => Buffer.from(s).toString("hex").padEnd(64, "0");
 
 const TEST_STRING = "Hello world!Hello world!01234567";
 
 const TEST_ADDRESS = "0x1234567890123456789012345678901234567890";
-const TEST_ADDRESS_ENCODED = testUint256(BigInt(TEST_ADDRESS));
+const TEST_ADDRESS_ENCODED = _uint256(BigInt(TEST_ADDRESS));
 
-const BYTES_TEST_STRING_ENCODED = `${testUint256(BigInt(32))}${testUint256(BigInt(TEST_STRING.length))}${testBytes32(
+const BYTES_TEST_STRING_ENCODED = `${_uint256(BigInt(32))}${_uint256(BigInt(TEST_STRING.length))}${_bytes32(
   TEST_STRING,
 )}`;
-const BYTES_EMPTY_STRING_ENCODED = `${testUint256(BigInt(32))}${testUint256(BigInt(0))}`;
+const BYTES_EMPTY_STRING_ENCODED = `${_uint256(BigInt(32))}${_uint256(BigInt(0))}`;
 
-const UINT256_EMPTY = testUint256(BigInt(0));
+const UINT256_EMPTY = _uint256(BigInt(0));
 
 const BYTES_TYPES = [
   bytes1(),
@@ -226,6 +230,16 @@ const UINT_TYPES = [
   uint256(),
 ];
 
+const testGetType = (name: string, type: string = name) =>
+  it(name, () => {
+    expect(getType(name)).to.have.property("type", type);
+  });
+
+const invalidGetTypeFails = (name: string) =>
+  it(`${name} fails`, () => {
+    expect(() => getType(name)).to.throw();
+  });
+
 describe("solidity-types.ts", () => {
   describe("address", () => {
     it("address", () => {
@@ -242,6 +256,24 @@ describe("solidity-types.ts", () => {
     });
     it(`decode ${TEST_ADDRESS_ENCODED}`, () => {
       expect(decode(address(), Buffer.from(TEST_ADDRESS_ENCODED, "hex"), 0)).to.deep.equal(address(TEST_ADDRESS));
+    });
+  });
+
+  describe("bool", () => {
+    it("bool", () => {
+      expect(bool().value).to.equal("0x0");
+    });
+    it("encode", () => {
+      expect(encode(bool()).toString("hex")).to.equal(UINT256_EMPTY);
+    });
+    it(`encode true`, () => {
+      expect(encode(bool(true)).toString("hex")).to.equal(_uint256(BigInt(1)));
+    });
+    it("decode", () => {
+      expect(decode(bool(), Buffer.from(UINT256_EMPTY, "hex"), 0)).to.deep.equal(bool());
+    });
+    it(`decode true`, () => {
+      expect(decode(bool(), Buffer.from(_uint256(BigInt(1)), "hex"), 0)).to.deep.equal(bool(true));
     });
   });
 
@@ -280,22 +312,59 @@ describe("solidity-types.ts", () => {
         expect(() => type.encode(subString + " ")).to.throw();
       });
       it("encode default", () => {
-        expect(encode(type).toString("hex")).to.equal(testBytes32(""));
+        expect(encode(type).toString("hex")).to.equal(_bytes32(""));
       });
       it(`encode ${subString}`, () => {
-        expect(type.encode(subString).toString("hex")).to.equal(testBytes32(subString));
+        expect(type.encode(subString).toString("hex")).to.equal(_bytes32(subString));
       });
       it("decode default", () => {
-        expect(decode(type, Buffer.from(testBytes32(""), "hex"), 0)).to.deep.equal(type);
+        expect(decode(type, Buffer.from(_bytes32(""), "hex"), 0)).to.deep.equal(type);
       });
       it(`decode ${subString}`, () => {
-        expect(decode(type, Buffer.from(testBytes32(subString), "hex"), 0)).to.deep.equal({
+        expect(decode(type, Buffer.from(_bytes32(subString), "hex"), 0)).to.deep.equal({
           type: type.type,
           value: `0x${Buffer.from(subString).toString("hex")}`,
         });
       });
     });
   }
+
+  describe("getType", () => {
+    testGetType("address");
+
+    testGetType("bool");
+
+    testGetType("bytes");
+
+    testGetType("bytes5");
+    invalidGetTypeFails("bytes33");
+
+    testGetType("int256");
+    testGetType("int", "int256");
+    invalidGetTypeFails("int3");
+    invalidGetTypeFails("int264");
+
+    testGetType("string");
+
+    testGetType("uint256");
+    testGetType("uint", "uint256");
+    invalidGetTypeFails("uint3");
+    invalidGetTypeFails("uint264");
+
+    testGetType("(uint)", "(uint256)");
+    testGetType("(uint,uint)", "(uint256,uint256)");
+    testGetType("(uint,uint,uint)", "(uint256,uint256,uint256)");
+    testGetType("((uint))", "((uint256))");
+
+    testGetType("uint[]", "uint256[]");
+    testGetType("(uint)[]", "(uint256)[]");
+
+    testGetType("uint[2]", "uint256[2]");
+    testGetType("(uint)[2]", "(uint256)[2]");
+
+    testGetType("(uint256,uint256,uint256,bytes)[]");
+    testGetType("()");
+  });
 
   for (const type of INT_TYPES) {
     const max =
@@ -305,7 +374,7 @@ describe("solidity-types.ts", () => {
     const minMinusOne = min - BigInt(1);
     describe(type.type, () => {
       it("default", () => {
-        expect(type.value).to.equal(BigInt(0));
+        expect(type.value).to.equal("0x0");
       });
       it(`${type.type}(0x${maxPlusOne.toString(16)}) fails`, () => {
         expect(() => type.encode(maxPlusOne)).to.throw();
@@ -317,40 +386,40 @@ describe("solidity-types.ts", () => {
         expect(encode(type).toString("hex")).to.equal(UINT256_EMPTY);
       });
       it(`encode 0x${max.toString(16)}`, () => {
-        expect(type.encode(max).toString("hex")).to.equal(testUint256(max));
+        expect(type.encode(max).toString("hex")).to.equal(_uint256(max));
       });
       it(`encode -0x${(-min).toString(16)}`, () => {
-        expect(type.encode(min).toString("hex")).to.equal(testUint256(BigInt(2) ** BigInt(256) + min - BigInt(1)));
+        expect(type.encode(min).toString("hex")).to.equal(_uint256(BigInt(2) ** BigInt(256) + min - BigInt(1)));
       });
       it("decode default", () => {
-        expect(decode(type, Buffer.from(testUint256(BigInt(0)), "hex"), 0)).to.deep.equal(type);
+        expect(decode(type, Buffer.from(_uint256(BigInt(0)), "hex"), 0)).to.deep.equal(type);
       });
       it(`decode 0x${max.toString(16)}`, () => {
-        expect((decode(type, Buffer.from(testUint256(max), "hex"), 0) as int256).value).to.deep.equal(max);
+        expect((decode(type, Buffer.from(_uint256(max), "hex"), 0) as int256).value).to.equal(`0x${max.toString(16)}`);
       });
       it(`decode -0x${(-min).toString(16)}`, () => {
         expect(
-          (decode(type, Buffer.from(testUint256(BigInt(2) ** BigInt(256) + min), "hex"), 0) as int256).value,
-        ).to.deep.equal(min);
+          (decode(type, Buffer.from(_uint256(BigInt(2) ** BigInt(256) + min), "hex"), 0) as int256).value,
+        ).to.equal(`-0x${min.toString(16).substring(1)}`);
       });
     });
   }
 
   describe("string", () => {
     it("default", () => {
-      expect(_string().value).to.equal("");
+      expect(string().value).to.equal("");
     });
     it("encode default", () => {
-      expect(encode(_string()).toString("hex")).to.equal(BYTES_EMPTY_STRING_ENCODED);
+      expect(encode(string()).toString("hex")).to.equal(BYTES_EMPTY_STRING_ENCODED);
     });
     it(`encode ${TEST_STRING}`, () => {
-      expect(encode(_string(TEST_STRING)).toString("hex")).to.equal(BYTES_TEST_STRING_ENCODED);
+      expect(encode(string(TEST_STRING)).toString("hex")).to.equal(BYTES_TEST_STRING_ENCODED);
     });
     it("decode default", () => {
-      expect(decode(_string(), Buffer.from(BYTES_EMPTY_STRING_ENCODED, "hex"), 0)).to.deep.equal(_string());
+      expect(decode(string(), Buffer.from(BYTES_EMPTY_STRING_ENCODED, "hex"), 0)).to.deep.equal(string());
     });
     it(`decode ${TEST_STRING}`, () => {
-      expect(decode(_string(), Buffer.from(BYTES_TEST_STRING_ENCODED, "hex"), 0)).to.deep.equal(_string(TEST_STRING));
+      expect(decode(string(), Buffer.from(BYTES_TEST_STRING_ENCODED, "hex"), 0)).to.deep.equal(string(TEST_STRING));
     });
   });
 
@@ -359,25 +428,25 @@ describe("solidity-types.ts", () => {
     const maxPlusOne = max + BigInt(1);
     describe(type.type, () => {
       it("default", () => {
-        expect(type.value).to.equal(BigInt(0));
+        expect(type.value).to.equal("0x0");
       });
       it(`${type.type}(0x${maxPlusOne.toString(16)}) fails`, () => {
         expect(() => type.encode(maxPlusOne)).to.throw();
       });
       it(`${type.type}(-0x1) fails`, () => {
-        expect(() => type.encode(BigInt(-1))).to.throw();
+        expect(() => type.encode(-BigInt(1))).to.throw();
       });
       it("encode default", () => {
         expect(encode(type).toString("hex")).to.equal(UINT256_EMPTY);
       });
       it(`encode 0x${max.toString(16)}`, () => {
-        expect(type.encode(max).toString("hex")).to.equal(testUint256(max));
+        expect(type.encode(max).toString("hex")).to.equal(_uint256(max));
       });
       it("decode default", () => {
-        expect(decode(type, Buffer.from(testUint256(BigInt(0)), "hex"), 0)).to.deep.equal(type);
+        expect(decode(type, Buffer.from(_uint256(BigInt(0)), "hex"), 0)).to.deep.equal(type);
       });
       it(`decode 0x${max.toString(16)}`, () => {
-        expect((decode(type, Buffer.from(testUint256(max), "hex"), 0) as uint256).value).to.deep.equal(max);
+        expect((decode(type, Buffer.from(_uint256(max), "hex"), 0) as uint256).value).to.equal(`0x${max.toString(16)}`);
       });
     });
   }

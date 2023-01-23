@@ -1,4 +1,3 @@
-import { GUID } from "aws-sdk/clients/es";
 import { BitcoinAddressType, BitcoinAddressUsageType } from "./address";
 import { HexString, Integer, IntString, Nullable } from "./data";
 import { CreateChangePolicyRequestResponse, PolicySchedule } from "./policy";
@@ -64,7 +63,8 @@ export interface CreateEthereumTransactionVariables {
 }
 
 export interface CreateSubWalletVariables {
-  walletId: GUID;
+  /**  V4 GUID */
+  walletId: string;
   name: string;
   type: SubWalletType;
 }

@@ -1,5 +1,5 @@
 import * as chai from "chai";
-import * as dirtyChai from "dirty-chai";
+import dirtyChai from "dirty-chai";
 import { isDeepStrictEqual } from "util";
 import { isValidUuid } from ".";
 import { DelegateScheduleArray, PolicySchedule } from "../types/policy";

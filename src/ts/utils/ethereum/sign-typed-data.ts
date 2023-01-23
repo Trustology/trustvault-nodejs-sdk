@@ -104,7 +104,7 @@ export const typeHash = (primaryType: string, types: TypedDataPayload["types"]) 
   return keccak256(encodeType(primaryType, types));
 };
 
-// This is the main function that has been build using Trustology's eth-utils functions to replace the use of ethereumjs-abi's ABI.rawEncode function
+// This is the main function that has been build using Bitpanda Custody's eth-utils functions to replace the use of ethereumjs-abi's ABI.rawEncode function
 export const rawEncode = (encTypes: string[], encValues: Buffer[]) => {
   const solidityTypes: SolidityType[] = encTypes.map(getType);
   const buffers = solidityTypes.map((t, i) => t.encode(encValues[i] as never));

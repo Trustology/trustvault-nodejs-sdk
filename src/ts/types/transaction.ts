@@ -5,6 +5,7 @@ import { HdWalletPath } from "./sub-wallet";
 
 export const TRANSACTION_SPEED = ["FAST", "MEDIUM", "SLOW"] as const;
 export type TransactionSpeed = typeof TRANSACTION_SPEED[number];
+export type TransactionType = 0 | 2;
 
 // Bitcoin
 export interface CreateBitcoinTransactionIdResponse {
@@ -80,18 +81,21 @@ export interface EthereumSignData {
 }
 
 export interface EthTransaction {
+  type?: TransactionType;
   to: HexString;
   value: IntString; // wei
   chainId: Integer;
   nonce: Integer;
   gasLimit: IntString; // wei
-  gasPrice: IntString; // wei
   fromAddress: HexString;
   data?: HexString;
   r?: HexString;
   s?: HexString;
   v?: HexString;
   decodedInput?: EthDecodedData;
+  gasPrice?: IntString; // wei
+  maxPriorityFeePerGas?: IntString; // wei
+  maxFeePerGas?: IntString; // wei
 }
 
 export interface EthTransactionInput extends EthTransaction {
@@ -107,7 +111,8 @@ export interface HdWalletPathObj {
   hdWalletAddressIndex: HexString;
 }
 
-export interface EthRawTransaction {
+export interface EthRawTransactionLegacy {
+  type: 0;
   nonce: HexString;
   gasPrice: HexString;
   gasLimit: HexString;
@@ -117,6 +122,21 @@ export interface EthRawTransaction {
   v?: HexString;
   data?: HexString;
 }
+
+export interface EthRawTransactionEIP1559 {
+  type: 2;
+  nonce: HexString;
+  maxFeePerGas: HexString;
+  maxPriorityFeePerGas: HexString;
+  gasLimit: HexString;
+  to: HexString;
+  value: HexString; // wei
+  chainId: number;
+  v?: HexString;
+  data?: HexString;
+}
+
+export type EthRawTransaction = EthRawTransactionLegacy | EthRawTransactionEIP1559;
 
 export interface EthTransactionDataDetails {
   toAddress: HexString;

@@ -1,4 +1,5 @@
-import * as EthereumTransactionLib from "ethereumjs-tx";
+import Common from "@ethereumjs/common";
+import { TransactionFactory } from "@ethereumjs/tx";
 import { toChecksumAddress } from "ethereumjs-util";
 import {
   EthereumSignData,
@@ -12,15 +13,16 @@ import {
   SignCallback,
   SignRequest,
   TransactionDigestData,
+  TransactionType,
 } from "../../types";
 import { numberToHex } from "../../utils";
 import { createSignRequest, getTransactionSignDataDigest } from "../signature";
 
 export class EthereumTransaction implements RequestClass {
+  public readonly type: TransactionType;
   public readonly fromAddress: HexString;
   public readonly to: HexString;
   public readonly nonce: Integer;
-  public readonly gasPrice: IntString;
   public readonly gasLimit: IntString;
   public readonly chainId: Integer;
   public readonly value: IntString;
@@ -31,8 +33,14 @@ export class EthereumTransaction implements RequestClass {
   public v?: HexString;
   public readonly hdWalletPath: HdWalletPath;
   public readonly unverifiedDigestData: TransactionDigestData;
+  // Legacy transaction
+  public readonly gasPrice?: IntString;
+  // EIP-1559
+  public readonly maxPriorityFeePerGas?: IntString;
+  public readonly maxFeePerGas?: IntString;
 
   constructor({ transaction, unverifiedDigestData, hdWalletPath }: EthereumSignData) {
+    this.type = transaction.type || 0;
     this.nonce = transaction.nonce;
     this.gasPrice = transaction.gasPrice;
     this.gasLimit = transaction.gasLimit;
@@ -43,6 +51,8 @@ export class EthereumTransaction implements RequestClass {
     this.value = transaction.value;
     this.unverifiedDigestData = unverifiedDigestData;
     this.hdWalletPath = hdWalletPath;
+    this.maxPriorityFeePerGas = transaction.maxPriorityFeePerGas;
+    this.maxFeePerGas = transaction.maxFeePerGas;
   }
 
   /**
@@ -101,18 +111,19 @@ export class EthereumTransaction implements RequestClass {
   }
 
   private constructRawTransaction(): EthRawTransaction {
-    const transaction: EthRawTransaction = {
+    return {
       chainId: this.chainId,
+      gasPrice: numberToHex(this.gasPrice!),
       gasLimit: numberToHex(this.gasLimit),
-      gasPrice: numberToHex(this.gasPrice),
+      maxFeePerGas: numberToHex(this.maxFeePerGas!),
+      maxPriorityFeePerGas: numberToHex(this.maxPriorityFeePerGas!),
       nonce: numberToHex(this.nonce),
       to: this.to,
       v: this.v,
       data: this.data,
       value: numberToHex(this.value),
+      type: this.type,
     };
-
-    return transaction;
   }
 
   /**
@@ -123,7 +134,17 @@ export class EthereumTransaction implements RequestClass {
     const rawTransaction: EthRawTransaction = this.constructRawTransaction();
 
     // Get transactionDigest
-    const ethTransaction = new EthereumTransactionLib(rawTransaction);
-    return ethTransaction.hash(false);
+    const customCommon = Common.custom(
+      {
+        chainId: rawTransaction.chainId,
+      },
+      {
+        eips: [1559],
+        supportedHardforks: ["london"],
+        hardfork: "london",
+      },
+    );
+    const ethTransaction = TransactionFactory.fromTxData({ ...rawTransaction }, { common: customCommon });
+    return ethTransaction.getMessageToSign();
   }
 }

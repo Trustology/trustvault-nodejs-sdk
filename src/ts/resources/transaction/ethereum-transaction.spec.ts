@@ -1,5 +1,5 @@
 import * as chai from "chai";
-import * as dirtyChai from "dirty-chai";
+import dirtyChai from "dirty-chai";
 import { HdWalletPath } from "../../types";
 import { EthereumTransaction } from "./ethereum-transaction";
 

@@ -33,4 +33,4 @@ const trustVaultSandbox = new TrustVault({ apiKey: "<TRUST_VAULT_API_KEY>", envi
 const trustVault = new TrustVault({ apiKey: "<TRUST_VAULT_API_KEY>"});
 ```
 
-You can find more detailed documentation and examples in our [Developer Documentation](https://developer.trustology.io/) pages.
+You can find more detailed documentation and examples in our [Developer Documentation](https://developer.bitpandacustody.com/).

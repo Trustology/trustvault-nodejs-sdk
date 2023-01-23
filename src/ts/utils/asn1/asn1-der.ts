@@ -1,5 +1,5 @@
 import * as asn1 from "asn1.js";
-import * as BN from "bn.js";
+import BN from "bn.js";
 import { PolicySchedule, PolicyTemplate } from "../../types/policy";
 import { ProvenanceDataSchema, SignatureRS, SubjectPublicKeyInfo } from "../../types/signature";
 import { TxDigestPathInt } from "../../types/transaction";

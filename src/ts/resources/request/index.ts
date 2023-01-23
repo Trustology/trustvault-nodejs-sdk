@@ -94,7 +94,7 @@ export const constructBitcoinTransactionRequest = (
  * @param gasLimit - optional, the gasLimit to set for the transaction, decimal integer string
  * @param nonce - optional, the nonce for this transaction. Use with caution.
  * @param chainId - optional, the integer chainId for this transaction. e.g. 1 = default (mainnet), 56 = Binance Smart Chain
- * @see https://help.trustology.io/en/articles/3123653-what-token-s-do-we-support
+ * @see https://help.bitpandacustody.com/en/articles/3123653-what-token-s-do-we-support
  */
 export const createEthereumTransaction = async (
   fromAddress: HexString,

@@ -8,10 +8,11 @@
     "strict": true,
     "alwaysStrict": true,
     "noUnusedLocals": true,
-    "target": "es2018",
+    "target": "ES2020",
     "typeRoots": ["node_modules/@types", "typings"],
     "declaration": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "esModuleInterop": true
   },
   "include": ["src/ts/**/*.ts"],
   "exclude": ["node_modules"]

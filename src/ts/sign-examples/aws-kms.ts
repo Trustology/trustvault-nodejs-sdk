@@ -160,7 +160,7 @@ export class AwsKmsKeyStore implements KeyStore {
         this.publicKey = await this.getPublicKey();
       }
     } catch (e) {
-      errorMessage = `Key ${this.awsKeyId} has an unknown validation error: ${e.message}`;
+      errorMessage = `Key ${this.awsKeyId} has an unknown validation error: ${(e as Error).message}`;
     }
     if (errorMessage) {
       throw Error(errorMessage);
