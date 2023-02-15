@@ -74,6 +74,9 @@ export interface EthereumSignMessageSignData {
 export interface EthereumSignMessageData {
   message: string; // if ETHEREUM_SIGN_TYPED_DATA the message is a stringified JSON
   address: string;
+  // V1 = "V1", Unsupported (dangerous stuff allowing this type of signing)
+  // V2 = "V2", intermediary design implemented by Cipher browser, we do not use this
+  version: "V3" | "V4";
 }
 
 export type EthereumTransactionWebhookMessage = WebhookMessage<

@@ -8,20 +8,29 @@ import {
   SignCallback,
   SignRequest,
 } from "../../types";
-import { createSignTypedDataDigest, validateSignTypedDataMessage } from "../../utils/ethereum";
+import { createSignTypedDataDigest, SignTypedDataVersion, validateSignTypedDataMessage } from "../../utils/ethereum";
 import { createSignRequest, getTransactionSignDataDigest } from "../signature";
+
+function isValidVersion(str: string): str is SignTypedDataVersion {
+  return str in SignTypedDataVersion;
+}
 
 export class EthereumSignMessage implements RequestClass {
   private webhookType: EthereumSignMessageWebhookType;
   private message: string;
   private hdWalletPath: HdWalletPath;
   private unverifiedDigestData: DigestSignData;
+  private version?: SignTypedDataVersion;
 
   constructor(webhookType: EthereumSignMessageWebhookType, signData: EthereumSignMessageSignData) {
     this.webhookType = webhookType;
     this.message = signData.data.message;
     this.hdWalletPath = signData.hdWalletPath;
     this.unverifiedDigestData = signData.unverifiedDigestData;
+    // don't set the version if not specified or correct type, it will default to V3 later
+    if (isValidVersion(signData.data.version)) {
+      this.version = signData.data.version;
+    }
   }
 
   /**
@@ -70,7 +79,7 @@ export class EthereumSignMessage implements RequestClass {
         return this.generatePersonalSignDigest();
       case "ETHEREUM_SIGN_TYPED_DATA_CREATED":
         const signTypedData = validateSignTypedDataMessage(this.message);
-        return createSignTypedDataDigest(signTypedData);
+        return createSignTypedDataDigest(signTypedData, this.version);
       default:
         throw new Error(`Webhook type ${this.webhookType} not supported`);
     }
