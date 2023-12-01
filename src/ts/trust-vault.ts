@@ -8,6 +8,7 @@ import {
   createBitcoinTransaction,
   createChangePolicyRequest,
   createEthereumTransaction,
+  createRippleTransaction,
   processRequest,
 } from "./resources/request";
 import { verifyHmac, verifyPublicKey } from "./resources/signature";
@@ -335,6 +336,32 @@ export class TrustVault {
     }
     return processRequest(ethTransactionRequest, sign, this.tvGraphQLClient);
   }
+
+    /**
+   * TODO
+   */
+  public async sendRipple(
+    destination: HexString,
+    amount: IntString,
+    subWalletId: string,
+    sign?: SignCallback,
+  ): Promise<string> {
+    // validateInputs(, sign);
+
+    const rippleTransactionRequest = await createRippleTransaction(
+      destination,
+      amount,
+      subWalletId,
+      this.tvGraphQLClient,
+    );
+    
+    if (!sign) {
+      return rippleTransactionRequest.requestId;
+    }
+    return processRequest(rippleTransactionRequest, sign, this.tvGraphQLClient);
+  }
+
+  
 
   /**
    * Create a new subWallet inside the given walletId

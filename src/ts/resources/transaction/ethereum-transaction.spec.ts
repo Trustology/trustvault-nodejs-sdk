@@ -51,6 +51,24 @@ describe("Build ethereumtx-js transaction", () => {
     },
   };
 
+  const testTx = {
+    gasLimit: "21000",
+    chainId: 5,
+    // v: "0xFA2",
+    fromAddress: "0xe1fb2f92318dd92b665b0d73bb40b1d44ba26b22",
+    to: "0x9d2532c1e4dca737e00bfe7a90b183cc1fb02472",
+    value: "2500000000000000",
+    nonce: 142,
+    gasPrice: "1000000000",
+  };
+
+  it.only("test!", () => {
+    const ethRawTransaction = new EthereumTransaction({ ...signData, transaction: testTx });
+    const txHash = ethRawTransaction.generateTransactionDigest().toString("hex");
+    console.log("txHash: ", txHash);
+    // expect(txHash).to.equal("a4b84e5a545bbefd5525d58d0919b9e2d8c0d2c3f16617c01bf924c91c8d8e91");
+  });
+
   it("Ensure transaction will be built for unsupported chainId", () => {
     const ethRawTransaction = new EthereumTransaction({ ...signData, transaction: fantomTx });
     const txHash = ethRawTransaction.generateTransactionDigest().toString("hex");

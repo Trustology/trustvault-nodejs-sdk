@@ -62,6 +62,12 @@ export interface CreateEthereumTransactionVariables {
   chainId?: Integer;
 }
 
+export interface CreateRippleTransactionVariables {
+  destination: HexString,
+  amount: IntString,
+  subWalletId: string
+}
+
 export interface CreateSubWalletVariables {
   /**  V4 GUID */
   walletId: string;
@@ -99,6 +105,10 @@ export interface CreateBitcoinTransactionGraphQlResponse {
 
 export interface CreateEthereumTransactionGraphQlResponse {
   createEthereumTransaction: Omit<CreateEthereumTransactionResponse, "signData"> & { signData: EthereumSign };
+}
+
+export interface CreateRippleTransactionGraphQlResponse {
+  createRippleTransaction: Omit<CreateEthereumTransactionResponse, "signData"> & { signData: EthereumSign };
 }
 
 export interface CreateSubWalletGraphQlResponse {

@@ -17,6 +17,7 @@ import {
 } from "../../types";
 import { EthereumSignMessage } from "../sign-message/ethereum-sign-message";
 import { BitcoinTransaction, EthereumTransaction } from "../transaction";
+import { RippleTransaction } from "../transaction/ripple-transaction";
 import { Policy } from "../wallet";
 
 /**
@@ -42,6 +43,7 @@ export const processRequest = async (
     requestId,
     signRequests,
   });
+  console.log(`id: ${id}`);
 
   if (id !== requestId) {
     throw new Error(`id mismatch: ${JSON.stringify({ id, requestId })}`);
@@ -147,6 +149,32 @@ export const constructEthereumSignMessageRequest = (
 ): TrustVaultRequest => ({
   requestId: webhookPayload.requestId,
   request: new EthereumSignMessage(type, webhookPayload.signData),
+});
+
+
+// Ripple
+
+export const createRippleTransaction = async (
+  destination: HexString,
+  amount: IntString,
+  subWalletId: string,
+  tvGraphQLClient: TrustVaultGraphQLClient,
+): Promise<TrustVaultRequest> => {
+  const { requestId, signData } = await tvGraphQLClient.createRippleTransaction(destination, amount, subWalletId);
+  const rippleTransactionRequest = constructRippleTransactionRequest(requestId, signData);
+
+  // validate the created transaction against the inputs
+  // rippleTransactionRequest.request.validateResponse(subWalletId, toAddress, amount);
+
+  return rippleTransactionRequest;
+};
+
+export const constructRippleTransactionRequest = (
+  requestId: string,
+  signData: any,
+): TrustVaultRequest => ({
+  requestId,
+  request: new RippleTransaction(signData),
 });
 
 // Change Policy

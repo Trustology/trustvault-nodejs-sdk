@@ -17,6 +17,8 @@ import {
   CreateEthereumTransactionGraphQlResponse,
   CreateEthereumTransactionResponse,
   CreateEthereumTransactionVariables,
+  // CreateRippleTransactionGraphQlResponse,
+  CreateRippleTransactionVariables,
   CreateSubWalletGraphQlResponse,
   CreateSubWalletUnverifiedResponse,
   CreateSubWalletVariables,
@@ -174,6 +176,32 @@ export class TrustVaultGraphQLClient {
     };
 
     return response;
+  }
+
+  /**
+   * TODO
+   */
+  public async createRippleTransaction(
+    destination: HexString,
+    amount: IntString,
+    subWalletId: string,
+  ): Promise<any> {
+    const { query, variables } = this.createRippleTransactionMutation(destination, amount, subWalletId);
+
+    const result = await this.graphQLClient.executeMutation<any>(query, variables);
+    console.log(`result: ${JSON.stringify(result)}`);
+
+    if (
+      !result.data?.createRippleTransaction.requestId
+    ) {
+      throw new Error(
+        `Unable to create bitcoin transaction. If the issue persists, please contact support. ${JSON.stringify(
+          result,
+        )}`,
+      );
+    }
+
+    return result.data.createRippleTransaction;
   }
 
   /**
@@ -756,6 +784,42 @@ export class TrustVaultGraphQLClient {
     return {
       query: mutation,
       variables: createEthereumTransactionVariables,
+    };
+  }
+
+
+  private createRippleTransactionMutation(
+    destination: HexString,
+    amount: IntString,
+    subWalletId: string,
+  ): GraphQlQueryVariable<CreateRippleTransactionVariables> {
+    // sendToDevicesForSigning: true, source: "TAPI", 
+    const mutation = `
+    mutation MyMutation(
+      $destination: String!,
+      $amount: String!,
+      $subWalletId: String!
+    ) {
+      createRippleTransaction(createRippleTransactionInput: {sendToDevicesForSigning: true, subWalletId: $subWalletId, rippleTransactionInput: {amount: $amount, destination: $destination}}) {
+        requestId
+        signData {
+          shaSignData
+          signData
+          transactionDigest
+        }
+      }
+    }
+    `;
+
+    const createRippleTransactionVariables: CreateRippleTransactionVariables = {
+      destination,
+      amount,
+      subWalletId,
+    };
+
+    return {
+      query: mutation,
+      variables: createRippleTransactionVariables,
     };
   }
 
