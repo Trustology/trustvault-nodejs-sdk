@@ -24,6 +24,7 @@ import {
   derEncodeProvenance,
   derEncodeRecovererSchedules,
   derEncodeTxDigestPath,
+  derEncodeTxDigestPathAlgo,
   isSignMessageDigestData,
   isTransactionDigestData,
 } from "../../utils";
@@ -32,28 +33,30 @@ import {
  * Generic function to verify the digest, signature and publicKey matches for the given curve
  * @param digest
  * @param signature - 64 bytes
- * @param publicKey - 65 bytes (first byte should be 04 in hex string)
+ * @param publicKeys - An array of 65 bytes (first byte should be 04 in hex string)
  * @param curve - p256 | secp256k1
  * @returns {Boolean}
  */
-export const verifySignature = (digest: Buffer, signature: Buffer, publicKey: Buffer, curve: string): boolean => {
-  const key = new EC(curve).keyFromPublic(publicKey);
-  const r = signature.slice(0, 32).toString("hex");
-  const s = signature.slice(-32).toString("hex");
-  return key.verify(digest, { r, s });
+export const verifySignature = (digest: Buffer, signature: Buffer, publicKeys: Buffer[], curve: string): boolean => {
+  return publicKeys.some((publicKey) => {
+    const key = new EC(curve).keyFromPublic(publicKey);
+    const r = signature.subarray(0, 32).toString("hex");
+    const s = signature.subarray(-32).toString("hex");
+    return key.verify(digest, { r, s });
+  });
 };
 
 /**
  * Verifies if the recovererSchedules did indeed came from trustVault
  * @param {PolicySchedule[]} recovererSchedules
  * @param {String} recovererSchedulesSignature - 128 characters hex format
- * @param {Buffer} trustVaultPublicKey - 65 bytes trustVault publicKey
+ * @param {Buffer[]} trustVaultRecoverersPublicKeys - array of 65 bytes trustVault publicKey
  * @throws when the recovererSchedule and signature does not match
  */
 export const verifyRecovererSchedules = (
   recovererSchedules: PolicySchedule[],
   recovererSchedulesSignature: string,
-  trustVaultPublicKey: Buffer,
+  trustVaultRecoverersPublicKeys: Buffer[],
 ): boolean => {
   const derRecoverers: Buffer = derEncodeRecovererSchedules(recovererSchedules);
   const recovererSchedulesDigest: Buffer = createHash("sha256").update(derRecoverers).digest();
@@ -61,7 +64,7 @@ export const verifyRecovererSchedules = (
   const isVerified: boolean = verifySignature(
     recovererSchedulesDigest,
     Buffer.from(recovererSchedulesSignature, "hex"),
-    trustVaultPublicKey,
+    trustVaultRecoverersPublicKeys,
     NIST_P_256_CURVE,
   );
 
@@ -87,7 +90,7 @@ const pathHexToInt = (path: HdWalletPath) => path.map((hex) => parseInt(hex, 16)
 export const verifyPublicKey = (
   walletId: string,
   publicKeyProvenance: PublicKeyProvenance,
-  trustVaultPublicKey: Buffer,
+  trustVaultPublicKeys: Buffer[],
 ): void => {
   const provenanceData: ProvenanceDataSchema = {
     walletId,
@@ -106,7 +109,7 @@ export const verifyPublicKey = (
   const isVerified: boolean = verifySignature(
     provenanceDataHash,
     Buffer.from(trustVaultProvenanceSignature, "hex"),
-    trustVaultPublicKey,
+    trustVaultPublicKeys,
     NIST_P_256_CURVE,
   );
 
@@ -167,7 +170,7 @@ export const verifyPublicKeySignaturePair = (
   }
 
   // verify the publicKey, signature and the data matches
-  const isVerified = verifySignature(signedHexData, signature, publicKey, curve);
+  const isVerified = verifySignature(signedHexData, signature, [publicKey], curve);
 
   if (!isVerified) {
     throw new Error("The signData and the publicKeySignaturePair produced by the sign callback does not match");
@@ -180,12 +183,27 @@ export const verifyPublicKeySignaturePair = (
  * Utility function get the correct signData/shaSignData by DER encoding the transactionDigest and path
  * @param encoding
  */
-export const getTransactionSignDataDigest = (transactionDigest: Buffer, path: HdWalletPath): SignDataBuffer => {
+export const getTransactionSignDataDigest = (
+  transactionDigest: Buffer,
+  path: HdWalletPath,
+  algo?: string,
+): SignDataBuffer => {
+  let signData: Buffer;
+
   const pathInt = path.map((hexIndex) => parseInt(hexIndex, 16));
-  const signData: Buffer = derEncodeTxDigestPath({
-    digest: transactionDigest.toString("hex"),
-    path: pathInt,
-  });
+
+  if (algo) {
+    signData = derEncodeTxDigestPathAlgo({
+      digest: transactionDigest.toString("hex"),
+      path: pathInt,
+      algo,
+    });
+  } else {
+    signData = derEncodeTxDigestPath({
+      digest: transactionDigest.toString("hex"),
+      path: pathInt,
+    });
+  }
 
   const shaSignData: Buffer = createHash("sha256").update(signData).digest();
 

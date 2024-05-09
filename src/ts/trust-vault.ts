@@ -11,6 +11,8 @@ import {
   processRequest,
 } from "./resources/request";
 import { verifyHmac, verifyPublicKey } from "./resources/signature";
+import { CardanoTransaction } from "./resources/transaction/cardano-transaction";
+import { RippleTransaction } from "./resources/transaction/ripple-transaction";
 import { NIST_P_256_CURVE } from "./static-data";
 import {
   AllWebhookMessages,
@@ -52,7 +54,8 @@ import {
 export class TrustVault {
   private tvGraphQLClient: TrustVaultGraphQLClient;
   private url: string;
-  private trustVaultPublicKey: Buffer;
+  private trustVaultPublicKeys: Buffer[];
+  private trustVaultRecoverersPublicKeys: Buffer[];
   private env: Environment;
 
   constructor({ environment = "production", apiKey, timeout = 30_000, apiUrlOverride }: TrustVaultOptions) {
@@ -66,7 +69,8 @@ export class TrustVault {
 
     this.env = environment;
     this.url = apiUrlOverride ? apiUrlOverride : configuration.url;
-    this.trustVaultPublicKey = configuration.trustVaultPublicKey;
+    this.trustVaultPublicKeys = configuration.trustVaultPublicKeys;
+    this.trustVaultRecoverersPublicKeys = configuration.trustVaultRecoverersPublicKeys;
     this.tvGraphQLClient = new TrustVaultGraphQLClient({
       apiKey,
       url: this.url,
@@ -117,9 +121,34 @@ export class TrustVault {
         trustVaultRequest = constructEthereumSignMessageRequest(type, payload);
         break;
       case "POLICY_CHANGE_REQUEST_CREATED":
-        trustVaultRequest = constructChangePolicyRequest(webhookMessage.payload, this.trustVaultPublicKey);
+        trustVaultRequest = constructChangePolicyRequest(webhookMessage.payload, this.trustVaultRecoverersPublicKeys);
         // validate recoverer schedules
         trustVaultRequest.request.validateResponse();
+        break;
+      case "RIPPLE_TRANSACTION_CREATED":
+        const {
+          requestId,
+          signData: { transaction: payment, unverifiedDigestData, hdWalletPath },
+        } = webhookMessage.payload;
+
+        trustVaultRequest = {
+          requestId,
+          request: new RippleTransaction({ requestId, transaction: payment, unverifiedDigestData, hdWalletPath }),
+        };
+
+        trustVaultRequest.request.validateResponse();
+
+        break;
+      case "CARDANO_TRANSACTION_CREATED":
+        const transaction = webhookMessage.payload;
+
+        trustVaultRequest = {
+          requestId: transaction.requestId,
+          request: new CardanoTransaction(transaction),
+        };
+
+        trustVaultRequest.request.validateResponse();
+
         break;
       default:
         // should not happen
@@ -164,7 +193,7 @@ export class TrustVault {
     const policyRequest = await createChangePolicyRequest(
       walletId,
       newDelegateSchedule,
-      this.trustVaultPublicKey,
+      this.trustVaultRecoverersPublicKeys,
       this.tvGraphQLClient,
     );
     if (!sign) {
@@ -218,7 +247,7 @@ export class TrustVault {
     const policyRequest = await createChangePolicyRequest(
       walletId,
       newDelegateSchedules,
-      this.trustVaultPublicKey,
+      this.trustVaultRecoverersPublicKeys,
       this.tvGraphQLClient,
     );
     if (!sign) {
@@ -336,6 +365,79 @@ export class TrustVault {
     return processRequest(ethTransactionRequest, sign, this.tvGraphQLClient);
   }
 
+  public async sendRipple(
+    destination: HexString,
+    amount: IntString,
+    subWalletId: string,
+    sign?: SignCallback,
+  ): Promise<string> {
+    const rippleTransaction = await this.tvGraphQLClient.createRippleTransaction(destination, amount, subWalletId);
+
+    if (!sign) {
+      return rippleTransaction.requestId;
+    }
+
+    return processRequest(
+      {
+        requestId: rippleTransaction.requestId,
+        request: rippleTransaction,
+      },
+      sign,
+      this.tvGraphQLClient,
+    );
+  }
+
+  /**
+   * Create a Cardano payment transaction (ADA only supported)
+   * @param destination The address to receive the ADA
+   * @param amount The amount in hex (lovelace) to send to destination
+   * @param subWalletId  The subWalletId to send the ADA from
+   * @returns The requestId for the transaction
+   */
+  public async sendCardanoPaymentTransaction(
+    destination: HexString,
+    amount: HexString,
+    subWalletId: string,
+  ): Promise<string> {
+    const cardanoTransaction = await this.tvGraphQLClient.createCardanoPaymentTransaction(
+      destination,
+      amount,
+      subWalletId,
+    );
+    return cardanoTransaction.requestId;
+  }
+
+  /**
+   * Create a stake transaction to delegate the stake to a specific pool
+   * @param poolId The poolId to delegate the stake too (Bech32 format e.g. pool1nmfr5j5rnqndprtazre802glpc3h865sy50mxdny65kfgf3e5eh)
+   * @param subWalletId The subWalletId to stake
+   * @returns The requestId for the transaction
+   */
+  public async sendCardanoStakeTransaction(poolId: string, subWalletId: string): Promise<string> {
+    const cardanoTransaction = await this.tvGraphQLClient.createCardanoStakeTransaction(poolId, subWalletId);
+    return cardanoTransaction.requestId;
+  }
+
+  /**
+   * Create an unstake transaction that will unstake the subWallet completly
+   * @param subWalletId The subWalletId to unstake from
+   * @returns The requestId for the transaction
+   */
+  public async sendCardanoUnstakeTransaction(subWalletId: string): Promise<string> {
+    const cardanoTransaction = await this.tvGraphQLClient.createCardanoUnstakeTransaction(subWalletId);
+    return cardanoTransaction.requestId;
+  }
+
+  /**
+   * Create a withdrawal (of staking rewards) transaction
+   * @param subWalletId The subWalletId to withdraw the stake rewards from
+   * @returns The requestId for the transaction
+   */
+  public async sendCardanoWithdrawalTransaction(subWalletId: string): Promise<string> {
+    const cardanoTransaction = await this.tvGraphQLClient.createCardanoWithdrawalTransaction(subWalletId);
+    return cardanoTransaction.requestId;
+  }
+
   /**
    * Create a new subWallet inside the given walletId
    * @param {options} CreateSubWalletOptions - the unique identifier for the wallet which the new subWallet will be created inside
@@ -398,7 +500,7 @@ export class TrustVault {
     };
 
     // verify the publicKey came from TrustVault by using the provenance publicKey
-    verifyPublicKey(options.walletId, publicKeyProvenanceData, this.trustVaultPublicKey);
+    verifyPublicKey(options.walletId, publicKeyProvenanceData, this.trustVaultPublicKeys);
     const verifiedPublicKey = publicKeyProvenanceData.publicKey;
 
     // TODO - verify addresses from other chains

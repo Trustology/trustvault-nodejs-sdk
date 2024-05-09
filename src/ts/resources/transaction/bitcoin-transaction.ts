@@ -31,7 +31,7 @@ export class BitcoinTransaction implements RequestClass {
   public readonly sighash: number;
   private network: BitcoinNetwork;
   private btcLibNetwork: networks.Network;
-  private trustVaultPublicKey: Buffer;
+  private trustVaultPublicKeys: Buffer[];
   private curve: Curve;
 
   constructor(bitcoinTransactionResponse: BitcoinTransactionResponse, opts?: TransactionOptions) {
@@ -43,7 +43,7 @@ export class BitcoinTransaction implements RequestClass {
     }
 
     this.network = configuration.bitcoinNetwork;
-    this.trustVaultPublicKey = configuration.trustVaultPublicKey;
+    this.trustVaultPublicKeys = configuration.trustVaultPublicKeys;
     this.btcLibNetwork = this.getBtcLibNetwork(this.network);
     this.version = bitcoinTransactionResponse.version;
     this.inputs = bitcoinTransactionResponse.inputs;
@@ -108,7 +108,7 @@ export class BitcoinTransaction implements RequestClass {
   public validateResponse(subWalletId: string, expectedToAddress?: string, expectedAmount?: IntString): boolean {
     const walletId = getWalletIdFromSubWalletId(subWalletId);
     // verify inputs
-    this.inputs.forEach((input) => verifyPublicKey(walletId, input.publicKeyProvenanceData, this.trustVaultPublicKey));
+    this.inputs.forEach((input) => verifyPublicKey(walletId, input.publicKeyProvenanceData, this.trustVaultPublicKeys));
     // verify change address
     this.outputs.forEach((output) => this.verifyChangeAddress(walletId, output));
     // verify toAddress
@@ -129,7 +129,7 @@ export class BitcoinTransaction implements RequestClass {
     }
 
     // verify the publicKey came from TrustVault
-    verifyPublicKey(walletId, publicKeyProvenanceData, this.trustVaultPublicKey);
+    verifyPublicKey(walletId, publicKeyProvenanceData, this.trustVaultPublicKeys);
     const verifiedPublicKey = publicKeyProvenanceData.publicKey;
 
     // derive the bitcoin change address from the verified publicKey

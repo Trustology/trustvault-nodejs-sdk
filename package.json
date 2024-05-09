@@ -1,6 +1,6 @@
 {
-  "name": "@trustology/trustvault-nodejs-sdk",
-  "version": "1.8.1",
+  "name": "@bitpandacustody/trustvault-nodejs-sdk",
+  "version": "1.13.1",
   "description": "TrustVault Node.js SDK",
   "main": "./index.js",
   "types": "./index.d.ts",
@@ -18,13 +18,6 @@
     "style-check": "prettier --check 'internal/tests/*.ts' 'src/ts/**/*.ts' *.json",
     "test": "npm run package && mocha --recursive -r ts-node/register './build/**/*.spec.js'"
   },
-  "repository": {
-    "type": "git",
-    "url": "git@github.com:Trustology/trustvault-nodejs-sdk.git"
-  },
-  "publishConfig": {
-    "@trustology:registry": "https://registry.npmjs.org"
-  },
   "author": "Bitpanda Custody Ltd",
   "license": "MIT",
   "prettier": {
@@ -34,15 +27,17 @@
   "dependencies": {
     "@apollo/client": "^3.7.0",
     "@ethereumjs/tx": "^3.5.2",
-    "cross-fetch": "^3.1.5",
-    "graphql": "^15.8.0",
     "asn1.js": "^5.4.1",
     "bitcoin-address-validation": "^1.0.2",
     "bitcoinjs-lib": "^5.1.7",
     "bs58check": "^2.1.2",
+    "cbor": "^9.0.2",
+    "cross-fetch": "^3.1.5",
     "elliptic": "^6.5.4",
     "ethereumjs-util": "^7.0.5",
-    "node-fetch": "^2.6.7"
+    "graphql": "^15.8.0",
+    "xrpl": "^2.14.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/chai": "^4.2.12",
@@ -52,8 +47,8 @@
     "@types/node": "^18.8.3",
     "@types/node-fetch": "2.6.2",
     "@types/sinon": "9.0.7",
-    "aws-sdk-mock": "^5.7.0",
-    "chai": "^4.2.0",
+    "aws-sdk-mock": "^5.8.0",
+    "chai": "^4.3.10",
     "dirty-chai": "^2.0.1",
     "mocha": "^9.2.2",
     "pegjs": "^0.10.0",

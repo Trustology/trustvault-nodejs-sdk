@@ -42,7 +42,6 @@ export const processRequest = async (
     requestId,
     signRequests,
   });
-
   if (id !== requestId) {
     throw new Error(`id mismatch: ${JSON.stringify({ id, requestId })}`);
   }
@@ -149,16 +148,35 @@ export const constructEthereumSignMessageRequest = (
   request: new EthereumSignMessage(type, webhookPayload.signData),
 });
 
+// Ripple
+
+export const createRippleTransaction = async (
+  destination: HexString,
+  amount: IntString,
+  subWalletId: string,
+  tvGraphQLClient: TrustVaultGraphQLClient,
+): Promise<TrustVaultRequest> => {
+  const rippleTransaction = await tvGraphQLClient.createRippleTransaction(destination, amount, subWalletId);
+
+  // validate the created transaction against the inputs
+  // rippleTransactionRequest.request.validateResponse(subWalletId, toAddress, amount);
+
+  return {
+    requestId: rippleTransaction.requestId,
+    request: rippleTransaction,
+  };
+};
+
 // Change Policy
 
 export const createChangePolicyRequest = async (
   walletId: string,
   newDelegateSchedules: PolicySchedule[],
-  trustVaultPublicKey: Buffer,
+  trustVaultRecoverersPublicKeys: Buffer[],
   tvGraphQLClient: TrustVaultGraphQLClient,
 ): Promise<TrustVaultRequest> => {
   const createChangePolicyResponse = await tvGraphQLClient.createChangePolicyRequest(walletId, newDelegateSchedules);
-  const changePolicyRequest = constructChangePolicyRequest(createChangePolicyResponse, trustVaultPublicKey);
+  const changePolicyRequest = constructChangePolicyRequest(createChangePolicyResponse, trustVaultRecoverersPublicKeys);
 
   // validate the new schedule is the same delegate schedule that was asked & verify recovery schedule is signed by Trustology
   changePolicyRequest.request.validateResponse(newDelegateSchedules);
@@ -168,8 +186,8 @@ export const createChangePolicyRequest = async (
 
 export const constructChangePolicyRequest = (
   createChangePolicyResponse: CreateChangePolicyRequestResponse,
-  trustVaultPublicKey: Buffer,
+  trustVaultRecoverersPublicKeys: Buffer[],
 ): TrustVaultRequest => ({
   requestId: createChangePolicyResponse.requestId,
-  request: new Policy(createChangePolicyResponse, trustVaultPublicKey),
+  request: new Policy(createChangePolicyResponse, trustVaultRecoverersPublicKeys),
 });

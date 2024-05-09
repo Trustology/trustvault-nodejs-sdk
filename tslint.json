@@ -4,7 +4,7 @@
     "no-console": [true, "log"],
     "interface-name": [true, "never-prefix"],
     "no-implicit-dependencies": false,
-    "no-submodule-imports": [true, "@apollo", "aws-sdk"],
+    "no-submodule-imports": [true, "@apollo", "aws-sdk", "ethereum-cryptography"],
     "object-literal-sort-keys": false,
     "max-classes-per-file": false,
     "ordered-imports": true

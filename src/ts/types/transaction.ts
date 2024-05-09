@@ -1,11 +1,15 @@
+import { z } from "zod";
 import { BitcoinAddressType } from "./address";
-import { HexString, Integer, IntString, Nullable, NumString } from "./data";
-import { TransactionDigestData } from "./signature";
+import { HexString, HexStringSchema, Integer, IntString, Nullable, NumString } from "./data";
+import { CompressedECDSAPublicKeySchema, TransactionDigestData } from "./signature";
 import { HdWalletPath } from "./sub-wallet";
 
 export const TRANSACTION_SPEED = ["FAST", "MEDIUM", "SLOW"] as const;
 export type TransactionSpeed = typeof TRANSACTION_SPEED[number];
 export type TransactionType = 0 | 2;
+
+export const RippleAddressRegex = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
+export const RippleAddressSchema = z.string().min(25).max(35).regex(RippleAddressRegex);
 
 // Bitcoin
 export interface CreateBitcoinTransactionIdResponse {
@@ -68,6 +72,32 @@ export interface CreateEthereumTransactionResponse {
   assetRate: NumString;
 }
 
+export interface CreateRippleTransactionGraphQlResponse {
+  requestId: string;
+  createRippleTransaction: CreateRippleTransactionResponse;
+}
+
+export interface CreateCardanoPaymentTransactionGraphQlResponse {
+  createCardanoPaymentTransaction: { requestId: string };
+}
+
+export interface CreateCardanoWithdrawalTransactionGraphQlResponse {
+  createCardanoWithdrawalTransaction: { requestId: string };
+}
+
+export interface CreateCardanoStakeTransactionGraphQlResponse {
+  createCardanoStakeTransaction: { requestId: string };
+}
+
+export interface CreateCardanoUnstakeTransactionGraphQlResponse {
+  createCardanoUnstakeTransaction: { requestId: string };
+}
+
+export interface CreateRippleTransactionResponse {
+  requestId: string;
+  signData: RippleSignData;
+}
+
 export interface EthereumSign {
   transaction: EthTransaction;
   hdWalletPath: HdWalletPathObj;
@@ -78,6 +108,12 @@ export interface EthereumSignData {
   hdWalletPath: HdWalletPath;
   transaction: EthTransactionInput;
   unverifiedDigestData: TransactionDigestData;
+}
+
+export interface RippleSignData {
+  transaction: TrustVaultRippleTransaction;
+  unverifiedDigestData: TransactionDigestData;
+  hdWalletPath: HdWalletPath;
 }
 
 export interface EthTransaction {
@@ -97,6 +133,48 @@ export interface EthTransaction {
   maxPriorityFeePerGas?: IntString; // wei
   maxFeePerGas?: IntString; // wei
 }
+
+/* Taken from @bitpandacustody/data-dictionary */
+export const TrustVaultRippleTransactionSchema = z.object({
+  /**
+   * Base58 Encoded XRP Account Address
+   */
+  account: RippleAddressSchema,
+  /**
+   * XRP Transaction Type
+   */
+  transactionType: z.literal("Payment"),
+  /**
+   * Hex String representing the destination tag (also know as a memo).
+   * Helps identify the correct recipient of a transaction
+   */
+  destinationTag: HexStringSchema.optional(),
+  /**
+   * Base58 Encoded XRP Account Address
+   */
+  destination: RippleAddressSchema,
+  /**
+   * Hex String representing the amount of XRP to send (in drops) (1 XRP = 10^6 drops)
+   */
+  amount: HexStringSchema,
+  /**
+   * Compressed ECDSA Public Key signing the transaction
+   */
+  signingPubKey: CompressedECDSAPublicKeySchema,
+  /**
+   * Hex String representing the sequence number of the transaction
+   * Acts like a nonce, automatically incremented by 1 for each transaction
+   *
+   * Starts at the block number of the account's funding
+   */
+  sequence: HexStringSchema,
+  /**
+   * Hex String representing the fee to pay for the transaction (in drops) (1 XRP = 10^6 drops)
+   */
+  fee: HexStringSchema,
+});
+
+export type TrustVaultRippleTransaction = z.infer<typeof TrustVaultRippleTransactionSchema>;
 
 export interface EthTransactionInput extends EthTransaction {
   fromAddress: string;
@@ -146,6 +224,12 @@ export interface EthTransactionDataDetails {
 export interface TxDigestPathInt {
   digest: string;
   path: number[];
+}
+
+export interface TxDigestPathIntAlgo {
+  digest: string;
+  path: number[];
+  algo: string;
 }
 
 export interface EthDecodedData {

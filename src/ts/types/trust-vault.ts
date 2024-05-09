@@ -12,7 +12,8 @@ export type TrustVaultOptions = {
 
 export type TrustVaultConfig = {
   url: string;
-  trustVaultPublicKey: Buffer;
+  trustVaultPublicKeys: Buffer[];
+  trustVaultRecoverersPublicKeys: Buffer[];
   bitcoinNetwork: BitcoinNetwork;
 };
 

@@ -18,14 +18,14 @@ export class Policy implements RequestClass {
   private policyTemplate: PolicyTemplate;
   private readonly unverifiedDigestData: SignData;
   private readonly recovererTrustVaultSignature: HexString;
-  private readonly trustVaultPublicKey: Buffer;
+  private readonly trustVaultRecoverersPublicKeys: Buffer[];
 
   // should the constructor take in the env (prod, sandbox) then get the trustVaultPublicKey from config?
-  constructor(createPolicyChangeResponse: CreateChangePolicyRequestResponse, trustVaultPublicKey: Buffer) {
+  constructor(createPolicyChangeResponse: CreateChangePolicyRequestResponse, trustVaultRecoverersPublicKeys: Buffer[]) {
     this.policyTemplate = createPolicyChangeResponse.policyTemplate;
     this.unverifiedDigestData = createPolicyChangeResponse.unverifiedDigestData;
     this.recovererTrustVaultSignature = createPolicyChangeResponse.recovererTrustVaultSignature;
-    this.trustVaultPublicKey = trustVaultPublicKey;
+    this.trustVaultRecoverersPublicKeys = trustVaultRecoverersPublicKeys;
   }
 
   public async getSignRequests(requestId: string, sign: SignCallback): Promise<SignRequest[]> {
@@ -62,7 +62,7 @@ export class Policy implements RequestClass {
     verifyRecovererSchedules(
       this.policyTemplate.recovererSchedules,
       this.recovererTrustVaultSignature,
-      this.trustVaultPublicKey,
+      this.trustVaultRecoverersPublicKeys,
     );
 
     return true;

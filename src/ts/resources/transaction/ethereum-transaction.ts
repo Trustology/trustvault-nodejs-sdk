@@ -107,7 +107,7 @@ export class EthereumTransaction implements RequestClass {
         value: this.data.slice(75, 139),
       };
     }
-    throw new Error("Could not validate transaction as it was not for a transfer(adddress to, unit256 tokens)");
+    throw new Error("Could not validate transaction as it was not for a transfer(address to, unit256 tokens)");
   }
 
   private constructRawTransaction(): EthRawTransaction {

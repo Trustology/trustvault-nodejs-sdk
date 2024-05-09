@@ -62,6 +62,31 @@ export interface CreateEthereumTransactionVariables {
   chainId?: Integer;
 }
 
+export interface CreateCardanoPaymentTransactionVariables {
+  destination: HexString;
+  amount: IntString;
+  subWalletId: string;
+}
+
+export interface CreateCardanoWithdrawalTransactionVariables {
+  subWalletId: string;
+}
+
+export interface CreateCardanoUnstakeTransactionVariables {
+  subWalletId: string;
+}
+
+export interface CreateCardanoStakeTransactionVariables {
+  poolId: string;
+  subWalletId: string;
+}
+
+export interface CreateRippleTransactionVariables {
+  destination: HexString;
+  amount: IntString;
+  subWalletId: string;
+}
+
 export interface CreateSubWalletVariables {
   /**  V4 GUID */
   walletId: string;

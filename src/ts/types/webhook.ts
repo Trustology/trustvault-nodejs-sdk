@@ -2,16 +2,60 @@ import { IsoDateString, NumString } from "./data";
 import { PolicyTemplate } from "./policy";
 import { DigestSignData, SignData } from "./signature";
 import { HdWalletPath, SubWalletId } from "./sub-wallet";
-import { BitcoinSignData, EthereumSignData } from "./transaction";
+import { BitcoinSignData, EthereumSignData, RippleSignData } from "./transaction";
+
+export type CardanoSignData = {
+  data: {
+    inputs: {
+      transactionId: string;
+      index: string;
+    }[];
+    outputs: {
+      address: string;
+      amount: {
+        coin: string;
+      };
+    }[];
+    fee: string;
+    ttl: string;
+    withdrawalAmount?: string;
+    type: CardanoTransactionType;
+    certificates?: ("stakeDelegation" | "stakeDeregistration" | "stakeRegistration")[];
+    publicKeys?: {
+      stakePublicKey?: string;
+      poolId?: string;
+    };
+  };
+  delegateSignData: {
+    algorithm: string;
+    hdWalletPath: HdWalletPath;
+    accountHSMProvenanceSignature: string;
+    unverifiedDigestData: {
+      digest: string;
+      signData: string;
+      shaSignData: string;
+    };
+  }[];
+};
+
+export type CardanoTransactionType = "PAYMENT" | "STAKE" | "UNSTAKE" | "WITHDRAWAL";
+type CardanoPayload = Omit<WebhookTransactionCreated<CardanoChainSymbol, CardanoSignData>, "transferValueDefinition">;
+
+export type CardanoTransactionCreatedWebhookMessage = WebhookMessage<CardanoPayload, "CARDANO_TRANSACTION_CREATED">;
 
 export type AllWebhookMessages =
   | EvmTransactionCreatedWebhookMessages
   | EthereumPersonalSignWebhookMessage
   | EthereumSignTypedDataWebhookMessage
   | BitcoinTransactionWebhookMessage
-  | PolicyChangeRequestWebhookMessage;
+  | PolicyChangeRequestWebhookMessage
+  | RippleTransactionCreatedWebhookMessage
+  | CardanoTransactionCreatedWebhookMessage;
 
-export declare type TransactionWebhookMessages = EthereumTransactionWebhookMessage | BitcoinTransactionWebhookMessage;
+export declare type TransactionWebhookMessages =
+  | EthereumTransactionWebhookMessage
+  | BitcoinTransactionWebhookMessage
+  | CardanoTransactionCreatedWebhookMessage;
 
 export declare type EvmTransactionCreatedWebhookMessages =
   | EthereumTransactionWebhookMessage
@@ -51,10 +95,13 @@ export type BitcoinAssetSymbol = "BTC";
 
 export type BitcoinChainSymbol = "BITCOIN";
 
+export type RippleChainSymbol = "RIPPLE";
+
+export type CardanoChainSymbol = "CARDANO";
+
 // Ethereum
 
 export type EthereumTransactionCreated = WebhookTransactionCreated<EthereumChainSymbol, EthereumSignData>;
-
 export interface EthereumSignMessageCreated {
   source: string;
   walletId: string;
@@ -114,6 +161,25 @@ export type EthereumSignTypedDataWebhookMessage = WebhookMessage<
   "ETHEREUM_SIGN_TYPED_DATA_CREATED"
 >;
 
+export type CardanoTransactionCreatedEvent = Omit<
+  WebhookTransactionCreated<CardanoChainSymbol, CardanoSignData>,
+  "transferValueDefinition"
+>;
+
+// Ripple
+
+export type RippleTransactionCreatedEvent = Omit<
+  WebhookTransactionCreated<RippleChainSymbol, RippleSignData>,
+  "transferValueDefinition"
+>;
+
+export type RIPPLE_TRANSACTION_CREATED = "RIPPLE_TRANSACTION_CREATED";
+
+export type RippleTransactionCreatedWebhookMessage = WebhookMessage<
+  RippleTransactionCreatedEvent,
+  RIPPLE_TRANSACTION_CREATED
+>;
+
 export type EthereumChainSymbol = "ETHEREUM";
 
 // Webhook
@@ -155,7 +221,9 @@ export type AllWebhookTransactionCreatedEvents =
   | EthereumTransactionCreated
   | EthereumSignMessageCreated
   | BitcoinTransactionCreatedEvent
-  | WebhookPolicyChangeRequestCreated;
+  | RippleTransactionCreatedEvent
+  | WebhookPolicyChangeRequestCreated
+  | CardanoTransactionCreatedEvent;
 
 export interface WebhookMessage<T extends AllWebhookTransactionCreatedEvents, U extends WebhookMessageType> {
   version: string;
@@ -176,5 +244,7 @@ export type WebhookMessageType =
   | "BINANCE_SMART_CHAIN_TRANSACTION_CREATED"
   | "ETHEREUM_TRANSACTION_CREATED"
   | EthereumSignMessageWebhookType
+  | "RIPPLE_TRANSACTION_CREATED"
   | "BITCOIN_TRANSACTION_CREATED"
-  | "POLICY_CHANGE_REQUEST_CREATED";
+  | "POLICY_CHANGE_REQUEST_CREATED"
+  | "CARDANO_TRANSACTION_CREATED";

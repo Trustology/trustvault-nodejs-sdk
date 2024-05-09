@@ -2,7 +2,7 @@ import * as asn1 from "asn1.js";
 import BN from "bn.js";
 import { PolicySchedule, PolicyTemplate } from "../../types/policy";
 import { ProvenanceDataSchema, SignatureRS, SubjectPublicKeyInfo } from "../../types/signature";
-import { TxDigestPathInt } from "../../types/transaction";
+import { TxDigestPathInt, TxDigestPathIntAlgo } from "../../types/transaction";
 
 // DER-encoded object as defined by ANS X9.62–2005 and RFC 3279 Section 2.2.3
 // https://tools.ietf.org/html/rfc3279#section-2.2.3
@@ -76,12 +76,26 @@ const TRANSACTION_DIGEST_SCHEMA = asn1.define("TRANSACTION_DIGEST_SCHEMA", funct
 });
 // END ASN1.1 Scheme for Transaction
 
+// BEGIN ASN1.1 Scheme for Transaction with Alogrithm (where Algo is not ECDSA)
+const TRANSACTION_DIGEST_WITH_ALGO_SCHEMA = asn1.define("TRANSACTION_DIGEST_WITH_ALGO_SCHEMA", function (this: any) {
+  this.seq().obj(this.key("digest").octstr(), this.key("path").seqof(pathElements), this.key("algo").octstr());
+});
+// END ASN1.1 Scheme for Transaction
+
 // Utility functions
 
 const convertTransactionToInputTypes = (tx: TxDigestPathInt): any => {
   return {
     digest: Buffer.from(tx.digest, "hex"),
     path: tx.path.map((i) => new BN(i)),
+  };
+};
+
+const convertTransactionAlgoToInputTypes = (tx: TxDigestPathIntAlgo): any => {
+  return {
+    digest: Buffer.from(tx.digest, "hex"),
+    path: tx.path.map((i) => new BN(i)),
+    algo: Buffer.from(tx.algo.startsWith("0x") ? tx.algo.slice(2) : tx.algo, "hex"),
   };
 };
 
@@ -228,6 +242,20 @@ export const encodeRecoverySchedule = (recoversSchedule: PolicySchedule[]): Buff
 export const encodeTransaction = (transactionInfo: TxDigestPathInt): Buffer => {
   try {
     const encode = TRANSACTION_DIGEST_SCHEMA.encode(convertTransactionToInputTypes(transactionInfo), "der");
+    return encode;
+  } catch ({ error, stack, code }) {
+    console.error(`Error encoding the TranscationData: ${JSON.stringify({ error, stack, code })}`);
+  }
+  throw Error(`Unable to encode the TranscationData`);
+};
+
+// DER encode a Transaction with an algo (not for ECDSA)
+export const encodeTransactionWithAlgo = (transactionInfo: TxDigestPathIntAlgo): Buffer => {
+  try {
+    const encode = TRANSACTION_DIGEST_WITH_ALGO_SCHEMA.encode(
+      convertTransactionAlgoToInputTypes(transactionInfo),
+      "der",
+    );
     return encode;
   } catch ({ error, stack, code }) {
     console.error(`Error encoding the TranscationData: ${JSON.stringify({ error, stack, code })}`);

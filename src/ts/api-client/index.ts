@@ -1,3 +1,4 @@
+import { RippleTransaction } from "../resources/transaction/ripple-transaction";
 import {
   AddSignatureGraphQlResponse,
   AddSignaturePayload,
@@ -11,12 +12,23 @@ import {
   CreateBitcoinTransactionGraphQlResponse,
   CreateBitcoinTransactionIdResponse,
   CreateBitcoinTransactionVariables,
+  CreateCardanoPaymentTransactionGraphQlResponse,
+  CreateCardanoPaymentTransactionVariables,
+  CreateCardanoStakeTransactionGraphQlResponse,
+  CreateCardanoStakeTransactionVariables,
+  CreateCardanoUnstakeTransactionGraphQlResponse,
+  CreateCardanoUnstakeTransactionVariables,
+  CreateCardanoWithdrawalTransactionGraphQlResponse,
+  CreateCardanoWithdrawalTransactionVariables,
   CreateChangePolicyGraphQlResponse,
   CreateChangePolicyRequestResponse,
   CreateChangePolicyVariables,
   CreateEthereumTransactionGraphQlResponse,
   CreateEthereumTransactionResponse,
   CreateEthereumTransactionVariables,
+  CreateRippleTransactionGraphQlResponse,
+  // CreateRippleTransactionGraphQlResponse,
+  CreateRippleTransactionVariables,
   CreateSubWalletGraphQlResponse,
   CreateSubWalletUnverifiedResponse,
   CreateSubWalletVariables,
@@ -174,6 +186,113 @@ export class TrustVaultGraphQLClient {
     };
 
     return response;
+  }
+
+  public async createCardanoPaymentTransaction(
+    destination: HexString,
+    amount: HexString,
+    subWalletId: string,
+  ): Promise<{ requestId: string }> {
+    const { query, variables } = this.createCardanoPaymentTransactionMutation(destination, amount, subWalletId);
+
+    const result = await this.graphQLClient.executeMutation<CreateCardanoPaymentTransactionGraphQlResponse>(
+      query,
+      variables,
+    );
+
+    if (!result.data?.createCardanoPaymentTransaction.requestId) {
+      throw new Error(
+        `Unable to create transaction. If the issue persists, please contact support. ${JSON.stringify(result)}`,
+      );
+    }
+
+    const { requestId } = result.data.createCardanoPaymentTransaction;
+
+    return { requestId };
+  }
+
+  public async createCardanoStakeTransaction(poolId: string, subWalletId: string): Promise<{ requestId: string }> {
+    const { query, variables } = this.createCardanoStakeTransactionMutation(poolId, subWalletId);
+
+    const result = await this.graphQLClient.executeMutation<CreateCardanoStakeTransactionGraphQlResponse>(
+      query,
+      variables,
+    );
+
+    if (!result.data?.createCardanoStakeTransaction.requestId) {
+      throw new Error(
+        `Unable to create stake transaction. If the issue persists, please contact support. ${JSON.stringify(result)}`,
+      );
+    }
+
+    const { requestId } = result.data.createCardanoStakeTransaction;
+
+    return { requestId };
+  }
+
+  public async createCardanoUnstakeTransaction(subWalletId: string): Promise<{ requestId: string }> {
+    const { query, variables } = this.createCardanoUnstakeTransactionMutation(subWalletId);
+
+    const result = await this.graphQLClient.executeMutation<CreateCardanoUnstakeTransactionGraphQlResponse>(
+      query,
+      variables,
+    );
+
+    if (!result.data?.createCardanoUnstakeTransaction.requestId) {
+      throw new Error(
+        `Unable to create unstake transaction. If the issue persists, please contact support. ${JSON.stringify(
+          result,
+        )}`,
+      );
+    }
+
+    const { requestId } = result.data.createCardanoUnstakeTransaction;
+
+    return { requestId };
+  }
+
+  public async createCardanoWithdrawalTransaction(subWalletId: string): Promise<{ requestId: string }> {
+    const { query, variables } = this.createCardanoWithdrawalTransactionMutation(subWalletId);
+
+    const result = await this.graphQLClient.executeMutation<CreateCardanoWithdrawalTransactionGraphQlResponse>(
+      query,
+      variables,
+    );
+
+    if (!result.data?.createCardanoWithdrawalTransaction.requestId) {
+      throw new Error(
+        `Unable to create withdrawal transaction. If the issue persists, please contact support. ${JSON.stringify(
+          result,
+        )}`,
+      );
+    }
+
+    const { requestId } = result.data.createCardanoWithdrawalTransaction;
+
+    return { requestId };
+  }
+
+  public async createRippleTransaction(
+    destination: HexString,
+    amount: HexString,
+    subWalletId: string,
+  ): Promise<RippleTransaction> {
+    const { query, variables } = this.createRippleTransactionMutation(destination, amount, subWalletId);
+
+    const result = await this.graphQLClient.executeMutation<CreateRippleTransactionGraphQlResponse>(query, variables);
+
+    if (!result.data?.createRippleTransaction.requestId) {
+      throw new Error(
+        `Unable to create transaction. If the issue persists, please contact support. ${JSON.stringify(result)}`,
+      );
+    }
+
+    const { requestId, signData } = result.data.createRippleTransaction;
+
+    return new RippleTransaction({
+      requestId,
+      ...signData,
+    });
   }
 
   /**
@@ -350,7 +469,7 @@ export class TrustVaultGraphQLClient {
    */
   private addSignatureMutation(addSignaturePayload: AddSignaturePayload): GraphQlQueryVariable<AddSignaturePayload> {
     const mutation = `
-      mutation(
+      mutation addSignatureSDK(
         $requestId: String!
         $signRequests: [SignRequest!]!
       ) {
@@ -383,7 +502,7 @@ export class TrustVaultGraphQLClient {
     delegateSchedules: PolicySchedule[],
   ): GraphQlQueryVariable<CreateChangePolicyVariables> {
     const mutation = `
-      mutation($walletId: String!, $delegateSchedules: [[ScheduleInput!]!]!) {
+      mutation createPolicyChangeRequestSDK($walletId: String!, $delegateSchedules: [[ScheduleInput!]!]!) {
         createChangePolicyRequest(
           createChangePolicyRequestInput: {
             walletId: $walletId
@@ -430,7 +549,7 @@ export class TrustVaultGraphQLClient {
    */
   private getSubWalletQuery(subWalletId: string, includeBalances?: boolean): GraphQlQueryVariable {
     const query = `
-      query getSubWallet($subWalletId: String!) {
+      query GetSubWalletSDK($subWalletId: String!) {
         user {
           subWallet(subWalletId: $subWalletId) {
             name
@@ -486,7 +605,7 @@ export class TrustVaultGraphQLClient {
     };
 
     const query = `
-      query getSubWallets($limit: Int, $nextToken: String) {
+      query GetSubWalletsSDK($limit: Int, $nextToken: String) {
         user {
           subWallets(limit: $limit, nextToken: $nextToken) {
             items {
@@ -554,7 +673,7 @@ export class TrustVaultGraphQLClient {
     sendToNetworkWhenSigned: boolean = true,
   ): GraphQlQueryVariable<CreateBitcoinTransactionVariables> {
     const mutation = `
-      mutation createBitcoinTransaction (
+      mutation createBitcoinTransactionSDK(
         $to: String!
         $subWalletId: String!
         $value: String!
@@ -672,7 +791,7 @@ export class TrustVaultGraphQLClient {
     sendToDevicesForSigning: boolean = true,
   ): GraphQlQueryVariable<CreateEthereumTransactionVariables> {
     const mutation = `
-      mutation (
+      mutation createEthTransactionSDK(
           $from: String!
           $to: String!
           $value: String!
@@ -759,6 +878,142 @@ export class TrustVaultGraphQLClient {
     };
   }
 
+  private createCardanoPaymentTransactionMutation(
+    destination: HexString,
+    amount: IntString,
+    subWalletId: string,
+  ): GraphQlQueryVariable<CreateCardanoPaymentTransactionVariables> {
+    const mutation = `
+    mutation createCardanoPaymentTransactionSDK(
+      $destination: String!,
+      $amount: String!,
+      $subWalletId: String!
+    ) {
+      createCardanoPaymentTransaction(transactionInput: {source: "API", sendToDevicesForSigning: true, subWalletId: $subWalletId, cardanoTransactionInput: {amount: $amount, to: $destination}}) {
+        requestId
+      }
+    }
+    `;
+
+    const createCardanoTransactionVariables: CreateCardanoPaymentTransactionVariables = {
+      destination,
+      amount,
+      subWalletId,
+    };
+
+    return {
+      query: mutation,
+      variables: createCardanoTransactionVariables,
+    };
+  }
+
+  private createCardanoStakeTransactionMutation(
+    poolId: string,
+    subWalletId: string,
+  ): GraphQlQueryVariable<CreateCardanoStakeTransactionVariables> {
+    const mutation = `
+    mutation createCardanoStakeTransactionSDK(
+      $poolId: String!,
+      $subWalletId: String!
+    ) {
+      createCardanoStakeTransaction(transactionInput: {source: "API", sendToDevicesForSigning: true, subWalletId: $subWalletId, cardanoTransactionInput: {poolId: $poolId}}) {
+        requestId
+      }
+    }
+    `;
+
+    const createCardanoTransactionVariables: CreateCardanoStakeTransactionVariables = {
+      poolId,
+      subWalletId,
+    };
+
+    return {
+      query: mutation,
+      variables: createCardanoTransactionVariables,
+    };
+  }
+
+  private createCardanoUnstakeTransactionMutation(
+    subWalletId: string,
+  ): GraphQlQueryVariable<CreateCardanoUnstakeTransactionVariables> {
+    const mutation = `
+    mutation createCardanoUnstakeTransactionSDK(
+      $subWalletId: String!
+    ) {
+      createCardanoUnstakeTransaction(transactionInput: {source: "API", sendToDevicesForSigning: true, subWalletId: $subWalletId}) {
+        requestId
+      }
+    }
+    `;
+
+    const createCardanoTransactionVariables: CreateCardanoUnstakeTransactionVariables = {
+      subWalletId,
+    };
+
+    return {
+      query: mutation,
+      variables: createCardanoTransactionVariables,
+    };
+  }
+
+  private createCardanoWithdrawalTransactionMutation(
+    subWalletId: string,
+  ): GraphQlQueryVariable<CreateCardanoWithdrawalTransactionVariables> {
+    const mutation = `
+    mutation createCardanoWithdrawalTransactionSDK(
+      $subWalletId: String!
+    ) {
+      createCardanoWithdrawalTransaction(transactionInput: {source: "API", sendToDevicesForSigning: true, subWalletId: $subWalletId}) {
+        requestId
+      }
+    }
+    `;
+
+    const createCardanoTransactionVariables: CreateCardanoWithdrawalTransactionVariables = {
+      subWalletId,
+    };
+
+    return {
+      query: mutation,
+      variables: createCardanoTransactionVariables,
+    };
+  }
+
+  private createRippleTransactionMutation(
+    destination: HexString,
+    amount: IntString,
+    subWalletId: string,
+  ): GraphQlQueryVariable<CreateRippleTransactionVariables> {
+    // sendToDevicesForSigning: true, source: "TAPI",
+    const mutation = `
+    mutation createRippleTransactionSDK(
+      $destination: String!,
+      $amount: String!,
+      $subWalletId: String!
+    ) {
+      createRippleTransaction(createRippleTransactionInput: {sendToDevicesForSigning: true, subWalletId: $subWalletId, rippleTransactionInput: {amount: $amount, destination: $destination}}) {
+        requestId
+        signData {
+          shaSignData
+          signData
+          transactionDigest
+        }
+      }
+    }
+    `;
+
+    const createRippleTransactionVariables: CreateRippleTransactionVariables = {
+      destination,
+      amount,
+      subWalletId,
+    };
+
+    return {
+      query: mutation,
+      variables: createRippleTransactionVariables,
+    };
+  }
+
   /**
    * Private API: Use at your own risk
    * createSubWalletMutation graphQL query
@@ -772,7 +1027,7 @@ export class TrustVaultGraphQLClient {
     subWalletType: SubWalletType,
   ): GraphQlQueryVariable<CreateSubWalletVariables> {
     const mutation = `
-        mutation(
+        mutation createSubWalletSDK(
           $type: SubWalletType!, 
           $name: String!, 
           $walletId: String!
@@ -813,7 +1068,7 @@ export class TrustVaultGraphQLClient {
    * @param requestId
    */
   private getRequestQuery(requestId: string): GraphQlQueryVariable<GetRequestVariables> {
-    const query = `query($requestId: String!) {
+    const query = `query GetRequestSDK($requestId: String!) {
       getRequest(requestId: $requestId) {
         requestId
         status
@@ -841,7 +1096,7 @@ export class TrustVaultGraphQLClient {
    * @param reason optionally pass the reason for cancelling
    */
   private cancelRequestMutation(requestId: string, reason?: string): GraphQlQueryVariable<GetRequestVariables> {
-    const mutation = `mutation($requestId: String!, $reason: String) {
+    const mutation = `mutation cancelRequestSDK($requestId: String!, $reason: String) {
       cancelRequest(requestId: $requestId, reason: $reason) {
         requestId
       }
@@ -867,7 +1122,7 @@ export class TrustVaultGraphQLClient {
     addressUsageType: BitcoinAddressUsageType = "RECEIVE",
   ): GraphQlQueryVariable<CreateBitcoinAddressVariables> {
     const mutation = `
-      mutation createBitcoinAddress(
+      mutation createBitcoinAddressSDK(
         $subWalletId: String!
         $addressType: BitcoinAddressType
         $addressUsageType: BitcoinAddressUsage

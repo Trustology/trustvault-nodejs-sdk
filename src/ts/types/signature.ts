@@ -1,4 +1,13 @@
+import { z } from "zod";
 import { HexString } from "./data";
+
+/* Taken from @bitpandacustody/data-dictionary */
+export const CompressedECDSAPublicKeySchema = z
+  .string()
+  .regex(new RegExp(/^(02|03)[A-Fa-f0-9]+$/), "Compressed Ecdsa Public Key must be a valid hex string")
+  .length(66, "Compressed Ecdsa Public Key must be 66 characters")
+  .refine((pk) => (pk.startsWith("0x") ? false : true), "Compressed Ecdsa Public Key must not be prefixed with 0x")
+  .transform((pk) => pk.toLowerCase());
 
 export type SignCallback = (
   signData: SignDataBuffer,
