@@ -3,9 +3,10 @@ import { BitcoinAddressType } from "./address";
 import { HexString, HexStringSchema, Integer, IntString, Nullable, NumString } from "./data";
 import { CompressedECDSAPublicKeySchema, TransactionDigestData } from "./signature";
 import { HdWalletPath } from "./sub-wallet";
+import { SignableMessageData } from "./webhook";
 
 export const TRANSACTION_SPEED = ["FAST", "MEDIUM", "SLOW"] as const;
-export type TransactionSpeed = typeof TRANSACTION_SPEED[number];
+export type TransactionSpeed = (typeof TRANSACTION_SPEED)[number];
 export type TransactionType = 0 | 2;
 
 export const RippleAddressRegex = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
@@ -61,7 +62,7 @@ export interface BitcoinTransactionResponse {
 }
 
 export const BITCOIN_NETWORKS = ["testnet", "bitcoin"] as const;
-export type BitcoinNetwork = typeof BITCOIN_NETWORKS[number];
+export type BitcoinNetwork = (typeof BITCOIN_NETWORKS)[number];
 
 // Ethereum
 
@@ -93,9 +94,35 @@ export interface CreateCardanoUnstakeTransactionGraphQlResponse {
   createCardanoUnstakeTransaction: { requestId: string };
 }
 
+export interface CreateSolanaPaymentTransactionGraphQlResponse {
+  createSolanaPaymentTransaction: { requestId: string };
+}
+
+export interface CreateSolanaTokenPaymentTransactionGraphQlResponse {
+  createSolanaTokenPaymentTransaction: { requestId: string };
+}
+
+export interface CreateSolanaInitialiseStakeTransactionGraphQlResponse {
+  createSolanaInitialiseStakeTransaction: { requestId: string };
+}
+
+export interface CreateSolanaActivateStakeTransactionGraphQlResponse {
+  createSolanaActivateStakeTransaction: { requestId: string };
+}
+export interface CreateSolanaSplitStakeTransactionGraphQlResponse {
+  createSolanaSplitStakeTransaction: { requestId: string };
+}
+export interface CreateSolanaDeactivateStakeTransactionGraphQlResponse {
+  createSolanaDeactivateStakeTransaction: { requestId: string };
+}
+export interface CreateSolanaWithdrawStakeTransactionGraphQlResponse {
+  createSolanaWithdrawStakeTransaction: { requestId: string };
+}
+
 export interface CreateRippleTransactionResponse {
   requestId: string;
-  signData: RippleSignData;
+  // this type is not correct...
+  signData: SignableMessageData<TrustVaultRippleTransaction>;
 }
 
 export interface EthereumSign {
@@ -174,6 +201,81 @@ export const TrustVaultRippleTransactionSchema = z.object({
   fee: HexStringSchema,
 });
 
+const SOLANA_ADDRESS_REGEX = /[1-9A-HJ-NP-Za-km-z]{32,44}/;
+const SolanaAddressSchema = z.string().regex(SOLANA_ADDRESS_REGEX);
+/**
+ * Solana Header Schema
+ *
+ * Contains a summary of the accounts involved in the Transaction
+ */
+const SolanaHeaderSchema = z.object({
+  /**
+   * The total number of signatures required to make the transaction valid
+   */
+  numRequiredSignatures: z.number().int().nonnegative(),
+  /**
+   * Number of readonly accounts requiring signatures
+   */
+  numReadonlySignedAccounts: z.number().int().nonnegative(),
+  /**
+   * Number of readonly accounts involved in the transaction that are not required to sign
+   */
+  numReadonlyUnsignedAccounts: z.number().int().nonnegative(),
+});
+
+/**
+ * Solana Compiled Instruction Schema
+ *
+ * Building block of all Solana Transactions, requiring 1 or more instructions to construct a Transaction
+ */
+const SolanaInstructionSchema = z.object({
+  /**
+   * Index in the accountKeys array which indicates which program executes the instruction
+   */
+  programIdIndex: z.number().int().nonnegative(),
+  /**
+   * Array of ordered indices into the accountKeys array indicating which accounts to pass to the program
+   */
+  accounts: z.array(z.number().int().nonnegative()),
+  /**
+   * Hex String representing the program input data
+   */
+  data: HexStringSchema,
+});
+
+/**
+ * Solana Transaction Schema
+ */
+export const TrustVaultSolanaTransactionSchema = z.object({
+  type: z.enum([
+    "PAYMENT",
+    "TOKEN",
+    "INITIALISE_STAKE",
+    "ACTIVATE_STAKE",
+    "SPLIT_STAKE",
+    "DEACTIVATE_STAKE",
+    "WITHDRAW_STAKE",
+  ]),
+  /**
+   * Transaction Header, contains a summary of the accounts involved in the Transaction
+   */
+  header: SolanaHeaderSchema,
+  /**
+   * Array of ordered accounts that are involved in the Transaction
+   * > NOTE: Not all accounts referenced here require signatures or are even owned by TrustVault or the recipient
+   */
+  accountKeys: z.array(SolanaAddressSchema).min(1),
+  /**
+   * Base58 encoded pseudorandom value that contains the durable nonce data payload
+   */
+  recentBlockhash: z.string(),
+  /**
+   * Array containing a list of all program instructions that will be executed in sequence and committed in one atomic transaction if all succeed
+   */
+  instructions: z.array(SolanaInstructionSchema).min(1),
+});
+
+export type TrustVaultSolanaTransaction = z.infer<typeof TrustVaultSolanaTransactionSchema>;
 export type TrustVaultRippleTransaction = z.infer<typeof TrustVaultRippleTransactionSchema>;
 
 export interface EthTransactionInput extends EthTransaction {

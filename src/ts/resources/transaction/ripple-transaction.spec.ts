@@ -1,5 +1,10 @@
 import { expect } from "chai";
-import { HdWalletPath, TransactionDigestData, TrustVaultRippleTransaction } from "../../types";
+import {
+  DelegateSignDataTransaction,
+  HdWalletPath,
+  SignableMessageData,
+  TrustVaultRippleTransaction,
+} from "../../types";
 import { RippleTransaction } from "./ripple-transaction";
 
 describe("Ripple transaction", () => {
@@ -15,18 +20,25 @@ describe("Ripple transaction", () => {
     transactionType: "Payment",
   };
 
-  const unverifiedDigestData: TransactionDigestData = {
-    shaSignData: "296e69b7df83c9b21f3d9d5b4ac705777e293f21f4gf39c1479972bd6d40e818",
+  const unverifiedMessageData: DelegateSignDataTransaction["unverifiedMessageData"] = {
+    shaSignData: "f4cbec4d60fa25464f379e697eb95e29a7516c1c669f6935c2c91e4efc98f72d",
     signData:
-      "305f0440a0acbe9bad7d0d6cf5addec0edc4582e3a0e0f05553abe4908b1d8870cc8f005282ca0ac3a6827258a3bbf56611eb5cbad96a58afd3cc88ce7ca251f33e944ac301b0205008000002c0205008000009002050080000000020100020100",
-    transactionDigest:
-      "a0acbe9bad7d0d6cf5addec0edc4082e3a0e0f15553abe4908b1d8870cc8f005181ca0ac3a6827258a3bbf56611eb5cbad96a58afd3cc88ce7ca251f33e944ac",
+      "303f0420a0acbe9bad7d0d6cf5addec0edc4082e3a0e0f05553abe4908b1d8870cc8f005301b0205008003009c0205008033009a0205008298011102010c02010f",
+    message: "a0acbe9bad7d0d6cf5addec0edc4082e3a0e0f05553abe4908b1d8870cc8f005",
   };
-
   const hdWalletPath: HdWalletPath = ["0x8003009c", "0x8033009a", "0x82980111", "0xc", "0xf"];
+  const expectedDigest: string = "a0acbe9bad7d0d6cf5addec0edc4082e3a0e0f05553abe4908b1d8870cc8f005";
 
-  const expectedDigest: string =
-    "a0acbe9bad7d0d6cf5addec0edc4082e3a0e0f05553abe4908b1d8870cc8f005181ca0ac3a6827258a3bbf56611eb5cbad96a58afd3cc88ce7ca251f33e944ac";
+  const signData: SignableMessageData<TrustVaultRippleTransaction> = {
+    data: transaction,
+    delegateSignData: [
+      {
+        unverifiedMessageData,
+        hdWalletPath,
+        accountHSMProvenanceSignature: "",
+      },
+    ],
+  };
 
   /* When instantiating a RippleTransaction object:
    * Internally, we validate the transaction input data using the Schema { TrustVaultRippleTransactionSchema } in src/ts/types/transaction.ts
@@ -36,7 +48,7 @@ describe("Ripple transaction", () => {
   let rippleTransaction: RippleTransaction;
 
   before(() => {
-    rippleTransaction = new RippleTransaction({ requestId, transaction, unverifiedDigestData, hdWalletPath });
+    rippleTransaction = new RippleTransaction({ requestId, signData });
   });
 
   it("Instantiates a RippleTransaction object", () => {
@@ -46,5 +58,9 @@ describe("Ripple transaction", () => {
   it("Constructs the expected digest", () => {
     const reconstructedDigest = rippleTransaction.constructExpectedDigest();
     expect(reconstructedDigest.toString("hex")).to.equal(expectedDigest);
+  });
+
+  it("Should validate transaction and signData", () => {
+    expect(rippleTransaction.validateResponse()).to.equal(true);
   });
 });

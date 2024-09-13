@@ -8,6 +8,7 @@ import {
   VALID_SIGNATURE_BYTE_LENGTH,
 } from "../../static-data";
 import {
+  Curve,
   DigestSignData,
   HdWalletPath,
   PolicySchedule,
@@ -147,7 +148,7 @@ export const verifyHmac = (requestBody: string, secret: string, signatureHeader:
 export const verifyPublicKeySignaturePair = (
   signedHexData: Buffer,
   publicKeySignaturePair: PublicKeySignaturePairBuffer,
-  curve: string,
+  curve: Curve,
 ): boolean => {
   if (!publicKeySignaturePair || typeof publicKeySignaturePair !== "object") {
     throw new Error("publicKeySignaturePair produced by sign callback is invalid");

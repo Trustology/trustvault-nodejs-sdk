@@ -13,7 +13,7 @@ import {
 import { getTransactionSignDataDigest, verifyPublicKeySignaturePair } from "../signature";
 
 export class CardanoTransaction implements RequestClass {
-  private readonly delegateSignData: typeof this.transaction["signData"]["delegateSignData"];
+  private readonly delegateSignData: (typeof this.transaction)["signData"]["delegateSignData"];
   private readonly transactionType: CardanoTransactionType;
 
   constructor(private transaction: CardanoTransactionCreatedWebhookMessage["payload"]) {
@@ -47,9 +47,9 @@ export class CardanoTransaction implements RequestClass {
     const constructedSignData = this.constructSignData();
 
     constructedSignData.map((data, index) => {
-      const delegateSignData = this.delegateSignData[index].unverifiedDigestData;
+      const delegateSignData = this.delegateSignData[index].unverifiedMessageData;
 
-      const isDigestCorrect = this.constructExpectedDigest().toString("hex") === delegateSignData.digest;
+      const isDigestCorrect = this.constructExpectedDigest().toString("hex") === delegateSignData.message;
       const isSignDataCorrect = data.signData.toString("hex") === delegateSignData.signData;
       const isShaSignDataCorrect = data.shaSignData.toString("hex") === delegateSignData.shaSignData;
 
@@ -58,15 +58,13 @@ export class CardanoTransaction implements RequestClass {
       if (!isValid) {
         throw new Error(
           `The reconstructed transaction does not match the expected values: ${JSON.stringify({
-            reconstructedDigest: {
-              digest: this.constructExpectedDigest().toString("hex"),
+            reconstructedMessage: {
+              message: this.constructExpectedDigest().toString("hex"),
               signData: data.signData.toString("hex"),
               shaSignData: data.shaSignData.toString("hex"),
             },
             webhookData: {
-              digest: delegateSignData.digest,
-              signData: delegateSignData.signData,
-              shaSignData: delegateSignData.shaSignData,
+              ...delegateSignData,
             },
           })}`,
         );
@@ -79,7 +77,7 @@ export class CardanoTransaction implements RequestClass {
   public constructExpectedDigest(): Buffer {
     const cbor = this.encodeTransactionBody();
 
-    return blake2b(cbor, 32);
+    return Buffer.from(blake2b(cbor, 32));
   }
 
   private constructSignData(): SignDataBuffer[] {
@@ -103,9 +101,7 @@ export class CardanoTransaction implements RequestClass {
       body.set(5, this.constructWithdrawals());
     }
 
-    const encoded = encodeCanonical(body);
-    console.info(encoded.toString("hex"));
-    return encoded;
+    return encodeCanonical(body);
   }
 
   private fromBech32Address(address: string): Buffer {
@@ -166,7 +162,7 @@ export class CardanoTransaction implements RequestClass {
 
   private constructStakeKey(type: number): (number | (number | Buffer)[])[] {
     const publicKey = this.transaction.signData.data.publicKeys?.stakePublicKey;
-    const publicKeyHash = blake2b(Buffer.from(publicKey!, "hex"), 28);
+    const publicKeyHash = Buffer.from(blake2b(Buffer.from(publicKey!, "hex"), 28));
 
     return [type, [0, publicKeyHash]];
   }
@@ -174,7 +170,7 @@ export class CardanoTransaction implements RequestClass {
   private constructStakeDelegation() {
     const { stakePublicKey, poolId } = this.transaction.signData.data.publicKeys!;
 
-    const publicKeyHash = blake2b(Buffer.from(stakePublicKey!, "hex"), 28);
+    const publicKeyHash = Buffer.from(blake2b(Buffer.from(stakePublicKey!, "hex"), 28));
     const poolKeyHash = this.fromBech32Address(poolId!);
 
     return [2, [0, publicKeyHash], poolKeyHash];
@@ -186,7 +182,7 @@ export class CardanoTransaction implements RequestClass {
     const withdrawalAddressBytes = this.fromBech32Address(outputs[0].address);
     const networkTag = this.networkTagFromAddressBytes(withdrawalAddressBytes);
 
-    const publicKeyHash = blake2b(Buffer.from(publicKeys?.stakePublicKey!, "hex"), 28);
+    const publicKeyHash = Buffer.from(blake2b(Buffer.from(publicKeys?.stakePublicKey!, "hex"), 28));
     const withdrawalAmountBigInt = BigInt(withdrawalAmount!);
 
     const map = new Map();

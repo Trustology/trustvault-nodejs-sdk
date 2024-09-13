@@ -13,9 +13,17 @@ import {
 import { verifyHmac, verifyPublicKey } from "./resources/signature";
 import { CardanoTransaction } from "./resources/transaction/cardano-transaction";
 import { RippleTransaction } from "./resources/transaction/ripple-transaction";
+import { SolanaTransaction } from "./resources/transaction/solana-transaction";
 import { NIST_P_256_CURVE } from "./static-data";
 import {
   AllWebhookMessages,
+  CreateSolanaActivateStakeTransactionVariables,
+  CreateSolanaDeactivateStakeTransactionVariables,
+  CreateSolanaInitialiseStakeTransactionVariables,
+  CreateSolanaPaymentTransactionVariables,
+  CreateSolanaSplitStakeTransactionVariables,
+  CreateSolanaTokenPaymentTransactionVariables,
+  CreateSolanaWithdrawStakeTransactionVariables,
   CreateSubWalletOptions,
   CreateSubWalletResponse,
   CreateSubWalletUnverifiedResponse,
@@ -126,14 +134,11 @@ export class TrustVault {
         trustVaultRequest.request.validateResponse();
         break;
       case "RIPPLE_TRANSACTION_CREATED":
-        const {
-          requestId,
-          signData: { transaction: payment, unverifiedDigestData, hdWalletPath },
-        } = webhookMessage.payload;
+        const { requestId, signData } = webhookMessage.payload;
 
         trustVaultRequest = {
           requestId,
-          request: new RippleTransaction({ requestId, transaction: payment, unverifiedDigestData, hdWalletPath }),
+          request: new RippleTransaction({ requestId, signData }),
         };
 
         trustVaultRequest.request.validateResponse();
@@ -150,6 +155,17 @@ export class TrustVault {
         trustVaultRequest.request.validateResponse();
 
         break;
+      case "SOLANA_TRANSACTION_CREATED": {
+        const solTxn = webhookMessage.payload;
+        trustVaultRequest = {
+          requestId: solTxn.requestId,
+          request: new SolanaTransaction(solTxn),
+        };
+
+        trustVaultRequest.request.validateResponse();
+
+        break;
+      }
       default:
         // should not happen
         throw new Error(`Webhook message type not supported: ${(webhookMessage as AllWebhookMessages).type}`);
@@ -419,7 +435,7 @@ export class TrustVault {
   }
 
   /**
-   * Create an unstake transaction that will unstake the subWallet completly
+   * Create an unstake transaction that will unstake the subWallet completely
    * @param subWalletId The subWalletId to unstake from
    * @returns The requestId for the transaction
    */
@@ -436,6 +452,93 @@ export class TrustVault {
   public async sendCardanoWithdrawalTransaction(subWalletId: string): Promise<string> {
     const cardanoTransaction = await this.tvGraphQLClient.createCardanoWithdrawalTransaction(subWalletId);
     return cardanoTransaction.requestId;
+  }
+
+  /**
+   * Send SOL from your subWallet
+   *
+   * @param input.subWalletId The subWalletId to send funds from
+   * @param input.amount 0x prefixed hex in lamports of the amount you would like to send
+   * @param input.to The address which will receive the funds
+   * @returns The requestId for the transaction
+   */
+  public async sendSolanaPaymentTransaction(input: CreateSolanaPaymentTransactionVariables) {
+    return this.tvGraphQLClient.createSolanaPaymentTransaction(input);
+  }
+
+  /**
+   * Send a Solana token transaction from your sub-wallet
+   *
+   * @param input.subWalletId The subWalletId to send funds from
+   * @param input.amount 0x prefixed hex in the lowest denomination of your desired token
+   * @param input.to The address which will receive the funds
+   * @param input.mintAddress The mint address of the token
+   * @returns The requestId for the transaction
+   */
+  public async sendSolanaTokenPaymentTransaction(input: CreateSolanaTokenPaymentTransactionVariables) {
+    return this.tvGraphQLClient.createSolanaTokenPaymentTransaction(input);
+  }
+
+  /**
+   * Initialise one of your stake addresses on chain
+   *
+   * @param input.subWalletId The subWalletId which the stake address belongs to
+   * @param input.amount 0x prefixed hex of the lamports amount you would like to stake
+   * @param input.newStakeAddress The stakeAddress you would like to initialise on chain, must be in status `UNINITIALISED`
+   * @param input.voteAddress Optional, if provided, the newStakeAddress will be delegated to this vote account
+   * @returns The requestId for the transaction
+   */
+  public async sendSolanaInitialiseStakeTransaction(input: CreateSolanaInitialiseStakeTransactionVariables) {
+    return this.tvGraphQLClient.createSolanaInitialiseStakeTransaction(input);
+  }
+
+  /**
+   * Activate one of your stake addresses on chain
+   *
+   * @param input.subWalletId The subWalletId which the stake address belongs to
+   * @param input.stakeAddress The stakeAddress you would like to delegate to the vote account, must be in status `ACTIVATING`, `DEACTIVATING` or `INACTIVE`
+   * @param input.voteAddress The stakeAddress will be delegated to this vote account
+   * @returns The requestId for the transaction
+   */
+  public async sendSolanaActivateStakeTransaction(input: CreateSolanaActivateStakeTransactionVariables) {
+    return this.tvGraphQLClient.createSolanaActivateStakeTransaction(input);
+  }
+
+  /**
+   * Split some funds from one of your stake addresses to a new stake address
+   *
+   * @param input.subWalletId The subWalletId which the stake addresses belong to
+   * @param input.stakeAddress The stakeAddress which will have funds split from it, must be in status `ACTIVE`
+   * @param input.amount 0x prefixed hex of the lamports amount you would like to split
+   * @param input.newStakeAddress The stakeAddress you would like to split funds to, must be in status `UNINITIALISED`
+   * @returns The requestId for the transaction
+   */
+  public async sendSolanaSplitStakeTransaction(input: CreateSolanaSplitStakeTransactionVariables) {
+    return this.tvGraphQLClient.createSolanaSplitStakeTransaction(input);
+  }
+
+  /**
+   * Stop your stake address from being delegated
+   *
+   * @param input.subWalletId The subWalletId which the stake address belongs to
+   * @param input.stakeAddress The stakeAddress which you would like to un-delegate, must be in status `ACTIVE` or `ACTIVATING`
+   * @returns The requestId for the transaction
+   */
+  public async sendSolanaDeactivateStakeTransaction(input: CreateSolanaDeactivateStakeTransactionVariables) {
+    return this.tvGraphQLClient.createSolanaDeactivateStakeTransaction(input);
+  }
+
+  /**
+   * Withdraw inactive funds from one of your stake addresses
+   *
+   * @param input.subWalletId The subWalletId which the stake addresses belong to
+   * @param input.stakeAddress The stakeAddress which will have funds withdrawn from it, must be in status `INACTIVE`
+   * @param input.amount 0x prefixed hex of the lamports amount you would like to withdraw
+   * @param input.withdrawAddress The address that will receive the withdrawn funds
+   * @returns The requestId for the transaction
+   */
+  public async sendSolanaWithdrawStakeTransaction(input: CreateSolanaWithdrawStakeTransactionVariables) {
+    return this.tvGraphQLClient.createSolanaWithdrawStakeTransaction(input);
   }
 
   /**
@@ -520,15 +623,6 @@ export class TrustVault {
     }
 
     return true;
-  }
-
-  /**
-   * Retrieve the list of subWallets associated with the API key
-   * @deprecated("Use getSubWalletsConnection to allow for pagination")
-   */
-  public async getSubWallets(): Promise<SubWallet[]> {
-    const subWallets: SubWallet[] = await this.tvGraphQLClient.getSubWallets(true); // default to returning balances as non-breaking change
-    return this.addWalletIdToWallet(subWallets);
   }
 
   /**

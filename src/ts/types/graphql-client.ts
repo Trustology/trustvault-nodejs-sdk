@@ -81,6 +81,70 @@ export interface CreateCardanoStakeTransactionVariables {
   subWalletId: string;
 }
 
+export interface CreateSolanaPaymentTransactionVariables {
+  subWalletId: string;
+  to: string;
+  /**
+   * Amount in lamports in 0x prefixed hex, e.g 1 sol = 0x3b9aca00
+   */
+  amount: HexString;
+}
+
+export interface CreateSolanaTokenPaymentTransactionVariables {
+  subWalletId: string;
+  to: string;
+  mintAddress: string;
+  /**
+   * 0x prefixed hex in the smallest denomination of the desired token
+   */
+  amount: HexString;
+  /**
+   * decimal integer for the number of decimals in the token e.g. 9
+   */
+  decimals: number;
+}
+
+export interface CreateSolanaInitialiseStakeTransactionVariables {
+  subWalletId: string;
+  newStakeAddress: string;
+  /**
+   * Amount in lamports in 0x prefixed hex, e.g 1 sol = 0x3b9aca00
+   */
+  amount: HexString;
+  voteAddress?: string;
+}
+
+export interface CreateSolanaActivateStakeTransactionVariables {
+  subWalletId: string;
+  stakeAddress: string;
+  voteAddress: string;
+}
+
+export interface CreateSolanaSplitStakeTransactionVariables {
+  subWalletId: string;
+  stakeAddress: string;
+  newStakeAddress: string;
+  /**
+   * Amount in lamports in 0x prefixed hex, e.g 1 sol = 0x3b9aca00
+   */
+  amount: HexString;
+}
+
+export interface CreateSolanaDeactivateStakeTransactionVariables {
+  subWalletId: string;
+  stakeAddress: string;
+}
+
+export interface CreateSolanaWithdrawStakeTransactionVariables {
+  subWalletId: string;
+  stakeAddress: string;
+  withdrawAddress: string;
+  /**
+   * Amount in lamports in 0x prefixed hex, e.g 1 sol = 0x3b9aca00
+   */
+  amount: HexString;
+}
+
 export interface CreateRippleTransactionVariables {
   destination: HexString;
   amount: IntString;

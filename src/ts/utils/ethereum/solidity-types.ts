@@ -76,33 +76,37 @@ const createType = <T, I, S>(
   });
 };
 
-const validateData = (type: string, size: number, minSize = 0) => (value: string | Buffer = HEX_PREFIX) => {
-  let validated;
+const validateData =
+  (type: string, size: number, minSize = 0) =>
+  (value: string | Buffer = HEX_PREFIX) => {
+    let validated;
 
-  if (typeof value === "object") {
-    validated = `0x${value.toString("hex")}`;
-  } else if (!value.startsWith("0x")) {
-    validated = `0x${Buffer.from(value, "utf-8").toString("hex")}`;
-  } else {
-    validated = value;
-  }
+    if (typeof value === "object") {
+      validated = `0x${value.toString("hex")}`;
+    } else if (!value.startsWith("0x")) {
+      validated = `0x${Buffer.from(value, "utf-8").toString("hex")}`;
+    } else {
+      validated = value;
+    }
 
-  if ((size > 0 && validated.length > size * 2 + 2) || (minSize > 0 && validated.length < 2 * size + 2)) {
-    throw new Error(`${type} should be between ${minSize} and ${size} bytes`);
-  }
+    if ((size > 0 && validated.length > size * 2 + 2) || (minSize > 0 && validated.length < 2 * size + 2)) {
+      throw new Error(`${type} should be between ${minSize} and ${size} bytes`);
+    }
 
-  return validated.padEnd(size * 2 + 2, "0");
-};
+    return validated.padEnd(size * 2 + 2, "0");
+  };
 
-const validateQuantity = (type: string, min: bigint, max: bigint) => (value: bigint | string = BigInt(0)) => {
-  const validated = typeof value === "string" ? BigInt(value) : value;
+const validateQuantity =
+  (type: string, min: bigint, max: bigint) =>
+  (value: bigint | string = BigInt(0)) => {
+    const validated = typeof value === "string" ? BigInt(value) : value;
 
-  if (validated < min || validated >= max) {
-    throw new Error(`${value} is not a valid ${type}`);
-  }
+    if (validated < min || validated >= max) {
+      throw new Error(`${value} is not a valid ${type}`);
+    }
 
-  return validated < 0 ? `-0x${validated.toString(16).substring(1)}` : `0x${validated.toString(16)}`;
-};
+    return validated < 0 ? `-0x${validated.toString(16).substring(1)}` : `0x${validated.toString(16)}`;
+  };
 
 const decodeArray = (typeArray: SolidityType[], buffer: Buffer, offset = 0) =>
   typeArray.map((value, idx) => decode(value, buffer, offset + idx));
@@ -132,49 +136,49 @@ const encodeInternal = (type: SolidityType, topLevel = false): Buffer =>
     ? Buffer.concat([encodeInternal(uint256(BigInt(32))), type.encode()])
     : type.encode();
 
-const bytesBase = (size: number, name = `bytes${size}`) => (
-  value = HEX_PREFIX,
-): SolidityTypeBase<any, string, string> => {
-  if (size < 1 || size > 32) {
-    throw new Error(`Invalid size ${size}`);
-  }
-  return createType(name, value, validateData(name, size), encodeData, (buffer: Buffer, index: number) =>
-    bytesBase(size, name)(slice(buffer, index, 0, size)),
-  );
-};
+const bytesBase =
+  (size: number, name = `bytes${size}`) =>
+  (value = HEX_PREFIX): SolidityTypeBase<any, string, string> => {
+    if (size < 1 || size > 32) {
+      throw new Error(`Invalid size ${size}`);
+    }
+    return createType(name, value, validateData(name, size), encodeData, (buffer: Buffer, index: number) =>
+      bytesBase(size, name)(slice(buffer, index, 0, size)),
+    );
+  };
 
-const intBase = (size: number, name = `int${size}`) => (
-  value: bigint | string = BigInt(0),
-): SolidityTypeBase<any, bigint | string, string> => {
-  if (size < 1 || size > 256 || size % 8 !== 0) {
-    throw new Error(`Invalid size ${size}`);
-  }
-  const max = BigInt(2) ** BigInt(size - 1);
-  return createType(name, value, validateQuantity(name, -max, max), encodeQuantity, (buffer: Buffer, index: number) =>
-    intBase(size, name)(signed(decodeUint(buffer, index), size)),
-  );
-};
+const intBase =
+  (size: number, name = `int${size}`) =>
+  (value: bigint | string = BigInt(0)): SolidityTypeBase<any, bigint | string, string> => {
+    if (size < 1 || size > 256 || size % 8 !== 0) {
+      throw new Error(`Invalid size ${size}`);
+    }
+    const max = BigInt(2) ** BigInt(size - 1);
+    return createType(name, value, validateQuantity(name, -max, max), encodeQuantity, (buffer: Buffer, index: number) =>
+      intBase(size, name)(signed(decodeUint(buffer, index), size)),
+    );
+  };
 
-const uintBase = (size: number, name = `uint${size}`) => (
-  value: bigint | string = BigInt(0),
-): SolidityTypeBase<any, bigint | string, string> => {
-  if (size < 1 || size > 256 || size % 8 !== 0) {
-    throw new Error(`Invalid size ${size}`);
-  }
-  const max = BigInt(2) ** BigInt(size);
-  return createType(
-    name,
-    value,
-    validateQuantity(name, BigInt(0), max),
-    encodeQuantity,
-    (buffer: Buffer, index: number) => uintBase(size, name)(decodeUint(buffer, index)),
-  );
-};
+const uintBase =
+  (size: number, name = `uint${size}`) =>
+  (value: bigint | string = BigInt(0)): SolidityTypeBase<any, bigint | string, string> => {
+    if (size < 1 || size > 256 || size % 8 !== 0) {
+      throw new Error(`Invalid size ${size}`);
+    }
+    const max = BigInt(2) ** BigInt(size);
+    return createType(
+      name,
+      value,
+      validateQuantity(name, BigInt(0), max),
+      encodeQuantity,
+      (buffer: Buffer, index: number) => uintBase(size, name)(decodeUint(buffer, index)),
+    );
+  };
 
 export const encode = (type: SolidityType): Buffer => encodeInternal(type, true);
 
 export const decode = <T extends SolidityType>(type: T, buffer: Buffer, index: number): T =>
-  ((type.isDynamic ? decodeDynamic(type, buffer, index) : type.decode(buffer, index)) as unknown) as T;
+  (type.isDynamic ? decodeDynamic(type, buffer, index) : type.decode(buffer, index)) as unknown as T;
 
 export type address = SolidityTypeBase<"address", string, string>;
 export const address = (value = EMPTY_ADDRESS): address =>

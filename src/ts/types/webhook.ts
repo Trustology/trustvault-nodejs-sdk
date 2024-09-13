@@ -2,46 +2,72 @@ import { IsoDateString, NumString } from "./data";
 import { PolicyTemplate } from "./policy";
 import { DigestSignData, SignData } from "./signature";
 import { HdWalletPath, SubWalletId } from "./sub-wallet";
-import { BitcoinSignData, EthereumSignData, RippleSignData } from "./transaction";
+import {
+  BitcoinSignData,
+  EthereumSignData,
+  TrustVaultRippleTransaction,
+  TrustVaultSolanaTransaction,
+} from "./transaction";
 
-export type CardanoSignData = {
-  data: {
-    inputs: {
-      transactionId: string;
-      index: string;
-    }[];
-    outputs: {
-      address: string;
-      amount: {
-        coin: string;
-      };
-    }[];
-    fee: string;
-    ttl: string;
-    withdrawalAmount?: string;
-    type: CardanoTransactionType;
-    certificates?: ("stakeDelegation" | "stakeDeregistration" | "stakeRegistration")[];
-    publicKeys?: {
-      stakePublicKey?: string;
-      poolId?: string;
-    };
-  };
-  delegateSignData: {
-    algorithm: string;
-    hdWalletPath: HdWalletPath;
-    accountHSMProvenanceSignature: string;
-    unverifiedDigestData: {
-      digest: string;
-      signData: string;
-      shaSignData: string;
+export type CardanoTransactionSchema = {
+  inputs: {
+    transactionId: string;
+    index: string;
+  }[];
+  outputs: {
+    address: string;
+    amount: {
+      coin: string;
     };
   }[];
+  fee: string;
+  ttl: string;
+  withdrawalAmount?: string;
+  type: CardanoTransactionType;
+  certificates?: ("stakeDelegation" | "stakeDeregistration" | "stakeRegistration")[];
+  publicKeys?: {
+    stakePublicKey?: string;
+    poolId?: string;
+  };
+};
+
+/**
+ * @deprecated use SignableMessageData
+ */
+export type SignableDigestData<U> = {
+  /**
+   * Request data required for building signData. eg transaction for Transaction Requests or policyTemplate for Wallet Recovery Requests
+   */
+  data: U;
+  /**
+   * Data necessary to construct the digests which the delegate must sign
+   */
+  delegateSignData: DelegateSignDataTransaction[];
+};
+
+export type SignableMessageData<U> = {
+  /**
+   * Request data required for building signData. eg transaction for Transaction Requests or policyTemplate for Wallet Recovery Requests
+   */
+  data: U;
+  /**
+   * Data necessary to construct the messages which the delegate must sign
+   */
+  delegateSignData: DelegateSignDataTransaction[];
+};
+
+export type DelegateSignDataTransaction = {
+  unverifiedMessageData: {
+    signData: string;
+    shaSignData: string;
+    message: string;
+  };
+  hdWalletPath: HdWalletPath;
+  accountHSMProvenanceSignature: string;
+  algorithm?: string | undefined;
 };
 
 export type CardanoTransactionType = "PAYMENT" | "STAKE" | "UNSTAKE" | "WITHDRAWAL";
-type CardanoPayload = Omit<WebhookTransactionCreated<CardanoChainSymbol, CardanoSignData>, "transferValueDefinition">;
-
-export type CardanoTransactionCreatedWebhookMessage = WebhookMessage<CardanoPayload, "CARDANO_TRANSACTION_CREATED">;
 
 export type AllWebhookMessages =
   | EvmTransactionCreatedWebhookMessages
@@ -50,12 +76,15 @@ export type AllWebhookMessages =
   | BitcoinTransactionWebhookMessage
   | PolicyChangeRequestWebhookMessage
   | RippleTransactionCreatedWebhookMessage
-  | CardanoTransactionCreatedWebhookMessage;
+  | CardanoTransactionCreatedWebhookMessage
+  | SolanaTransactionCreatedWebhookMessage;
 
 export declare type TransactionWebhookMessages =
   | EthereumTransactionWebhookMessage
   | BitcoinTransactionWebhookMessage
-  | CardanoTransactionCreatedWebhookMessage;
+  | CardanoTransactionCreatedWebhookMessage
+  | RippleTransactionCreatedWebhookMessage
+  | SolanaTransactionCreatedWebhookMessage;
 
 export declare type EvmTransactionCreatedWebhookMessages =
   | EthereumTransactionWebhookMessage
@@ -98,6 +127,8 @@ export type BitcoinChainSymbol = "BITCOIN";
 export type RippleChainSymbol = "RIPPLE";
 
 export type CardanoChainSymbol = "CARDANO";
+
+export type SolanaChainSymbol = "SOLANA";
 
 // Ethereum
 
@@ -162,14 +193,17 @@ export type EthereumSignTypedDataWebhookMessage = WebhookMessage<
 >;
 
 export type CardanoTransactionCreatedEvent = Omit<
-  WebhookTransactionCreated<CardanoChainSymbol, CardanoSignData>,
+  WebhookTransactionCreated<CardanoChainSymbol, SignableMessageData<CardanoTransactionSchema>>,
   "transferValueDefinition"
 >;
 
-// Ripple
-
 export type RippleTransactionCreatedEvent = Omit<
-  WebhookTransactionCreated<RippleChainSymbol, RippleSignData>,
+  WebhookTransactionCreated<RippleChainSymbol, SignableMessageData<TrustVaultRippleTransaction>>,
+  "transferValueDefinition"
+>;
+
+export type SolanaTransactionCreatedEvent = Omit<
+  WebhookTransactionCreated<SolanaChainSymbol, SignableMessageData<TrustVaultSolanaTransaction>>,
   "transferValueDefinition"
 >;
 
@@ -178,6 +212,16 @@ export type RIPPLE_TRANSACTION_CREATED = "RIPPLE_TRANSACTION_CREATED";
 export type RippleTransactionCreatedWebhookMessage = WebhookMessage<
   RippleTransactionCreatedEvent,
   RIPPLE_TRANSACTION_CREATED
+>;
+
+export type CardanoTransactionCreatedWebhookMessage = WebhookMessage<
+  CardanoTransactionCreatedEvent,
+  "CARDANO_TRANSACTION_CREATED"
+>;
+
+export type SolanaTransactionCreatedWebhookMessage = WebhookMessage<
+  SolanaTransactionCreatedEvent,
+  "SOLANA_TRANSACTION_CREATED"
 >;
 
 export type EthereumChainSymbol = "ETHEREUM";
@@ -223,7 +267,8 @@ export type AllWebhookTransactionCreatedEvents =
   | BitcoinTransactionCreatedEvent
   | RippleTransactionCreatedEvent
   | WebhookPolicyChangeRequestCreated
-  | CardanoTransactionCreatedEvent;
+  | CardanoTransactionCreatedEvent
+  | SolanaTransactionCreatedEvent;
 
 export interface WebhookMessage<T extends AllWebhookTransactionCreatedEvents, U extends WebhookMessageType> {
   version: string;
@@ -247,4 +292,5 @@ export type WebhookMessageType =
   | "RIPPLE_TRANSACTION_CREATED"
   | "BITCOIN_TRANSACTION_CREATED"
   | "POLICY_CHANGE_REQUEST_CREATED"
-  | "CARDANO_TRANSACTION_CREATED";
+  | "CARDANO_TRANSACTION_CREATED"
+  | "SOLANA_TRANSACTION_CREATED";

@@ -27,8 +27,21 @@ import {
   CreateEthereumTransactionResponse,
   CreateEthereumTransactionVariables,
   CreateRippleTransactionGraphQlResponse,
-  // CreateRippleTransactionGraphQlResponse,
   CreateRippleTransactionVariables,
+  CreateSolanaActivateStakeTransactionGraphQlResponse,
+  CreateSolanaActivateStakeTransactionVariables,
+  CreateSolanaDeactivateStakeTransactionGraphQlResponse,
+  CreateSolanaDeactivateStakeTransactionVariables,
+  CreateSolanaInitialiseStakeTransactionGraphQlResponse,
+  CreateSolanaInitialiseStakeTransactionVariables,
+  CreateSolanaPaymentTransactionGraphQlResponse,
+  CreateSolanaPaymentTransactionVariables,
+  CreateSolanaSplitStakeTransactionGraphQlResponse,
+  CreateSolanaSplitStakeTransactionVariables,
+  CreateSolanaTokenPaymentTransactionGraphQlResponse,
+  CreateSolanaTokenPaymentTransactionVariables,
+  CreateSolanaWithdrawStakeTransactionGraphQlResponse,
+  CreateSolanaWithdrawStakeTransactionVariables,
   CreateSubWalletGraphQlResponse,
   CreateSubWalletUnverifiedResponse,
   CreateSubWalletVariables,
@@ -291,8 +304,127 @@ export class TrustVaultGraphQLClient {
 
     return new RippleTransaction({
       requestId,
-      ...signData,
+      signData,
     });
+  }
+
+  public async createSolanaPaymentTransaction(input: CreateSolanaPaymentTransactionVariables) {
+    const { query, variables } = this.createSolanaPaymentTransactionMutation(input);
+
+    const result = await this.graphQLClient.executeMutation<CreateSolanaPaymentTransactionGraphQlResponse>(
+      query,
+      variables,
+    );
+
+    if (!result.data?.createSolanaPaymentTransaction.requestId) {
+      throw new Error(
+        `Unable to create transaction. If the issue persists, please contact support. ${JSON.stringify(result)}`,
+      );
+    }
+
+    return result.data.createSolanaPaymentTransaction;
+  }
+
+  public async createSolanaTokenPaymentTransaction(input: CreateSolanaTokenPaymentTransactionVariables) {
+    const { query, variables } = this.createSolanaTokenPaymentTransactionMutation(input);
+
+    const result = await this.graphQLClient.executeMutation<CreateSolanaTokenPaymentTransactionGraphQlResponse>(
+      query,
+      variables,
+    );
+
+    if (!result.data?.createSolanaTokenPaymentTransaction.requestId) {
+      throw new Error(
+        `Unable to create transaction. If the issue persists, please contact support. ${JSON.stringify(result)}`,
+      );
+    }
+
+    return result.data.createSolanaTokenPaymentTransaction;
+  }
+
+  public async createSolanaInitialiseStakeTransaction(input: CreateSolanaInitialiseStakeTransactionVariables) {
+    const { query, variables } = this.createSolanaInitialiseStakeTransactionMutation(input);
+
+    const result = await this.graphQLClient.executeMutation<CreateSolanaInitialiseStakeTransactionGraphQlResponse>(
+      query,
+      variables,
+    );
+
+    if (!result.data?.createSolanaInitialiseStakeTransaction.requestId) {
+      throw new Error(
+        `Unable to create transaction. If the issue persists, please contact support. ${JSON.stringify(result)}`,
+      );
+    }
+
+    return result.data.createSolanaInitialiseStakeTransaction;
+  }
+
+  public async createSolanaActivateStakeTransaction(input: CreateSolanaActivateStakeTransactionVariables) {
+    const { query, variables } = this.createSolanaActivateStakeTransactionMutation(input);
+
+    const result = await this.graphQLClient.executeMutation<CreateSolanaActivateStakeTransactionGraphQlResponse>(
+      query,
+      variables,
+    );
+
+    if (!result.data?.createSolanaActivateStakeTransaction.requestId) {
+      throw new Error(
+        `Unable to create transaction. If the issue persists, please contact support. ${JSON.stringify(result)}`,
+      );
+    }
+
+    return result;
+  }
+
+  public async createSolanaSplitStakeTransaction(input: CreateSolanaSplitStakeTransactionVariables) {
+    const { query, variables } = this.createSolanaSplitStakeTransactionMutation(input);
+
+    const result = await this.graphQLClient.executeMutation<CreateSolanaSplitStakeTransactionGraphQlResponse>(
+      query,
+      variables,
+    );
+
+    if (!result.data?.createSolanaSplitStakeTransaction.requestId) {
+      throw new Error(
+        `Unable to create transaction. If the issue persists, please contact support. ${JSON.stringify(result)}`,
+      );
+    }
+
+    return result;
+  }
+
+  public async createSolanaDeactivateStakeTransaction(input: CreateSolanaDeactivateStakeTransactionVariables) {
+    const { query, variables } = this.createSolanaDeactivateStakeTransactionMutation(input);
+
+    const result = await this.graphQLClient.executeMutation<CreateSolanaDeactivateStakeTransactionGraphQlResponse>(
+      query,
+      variables,
+    );
+
+    if (!result.data?.createSolanaDeactivateStakeTransaction.requestId) {
+      throw new Error(
+        `Unable to create transaction. If the issue persists, please contact support. ${JSON.stringify(result)}`,
+      );
+    }
+
+    return result.data.createSolanaDeactivateStakeTransaction;
+  }
+
+  public async createSolanaWithdrawStakeTransaction(input: CreateSolanaWithdrawStakeTransactionVariables) {
+    const { query, variables } = this.createSolanaWithdrawStakeTransactionMutation(input);
+
+    const result = await this.graphQLClient.executeMutation<CreateSolanaWithdrawStakeTransactionGraphQlResponse>(
+      query,
+      variables,
+    );
+
+    if (!result.data?.createSolanaWithdrawStakeTransaction.requestId) {
+      throw new Error(
+        `Unable to create transaction. If the issue persists, please contact support. ${JSON.stringify(result)}`,
+      );
+    }
+
+    return result.data.createSolanaWithdrawStakeTransaction;
   }
 
   /**
@@ -1154,6 +1286,224 @@ export class TrustVaultGraphQLClient {
     return {
       query: mutation,
       variables: createBitcoinAddressVariables,
+    };
+  }
+
+  private createSolanaPaymentTransactionMutation({
+    subWalletId,
+    to,
+    amount,
+  }: CreateSolanaPaymentTransactionVariables): GraphQlQueryVariable<CreateSolanaPaymentTransactionVariables> {
+    const mutation = `
+      mutation solPaymentTransactionSDK($subWalletId: String!, $to: String!, $amount: String!) {
+        createSolanaPaymentTransaction(
+          transactionInput: {
+            source: "API"
+            sendToDevicesForSigning: true
+            subWalletId: $subWalletId
+            solanaTransactionInput: { to: $to, amount: $amount }
+          }
+        ) {
+          requestId
+        }
+      }
+    `;
+
+    return {
+      query: mutation,
+      variables: {
+        subWalletId,
+        to,
+        amount,
+      },
+    };
+  }
+
+  private createSolanaTokenPaymentTransactionMutation({
+    subWalletId,
+    to,
+    amount,
+    mintAddress,
+    decimals,
+  }: CreateSolanaTokenPaymentTransactionVariables): GraphQlQueryVariable<CreateSolanaTokenPaymentTransactionVariables> {
+    const mutation = `
+      mutation solTokenPaymentTransactionSDK($subWalletId: String!, $to: String!, $amount: String!, $mintAddress: String!, $decimals: Int!) {
+        createSolanaTokenPaymentTransaction(
+          transactionInput: {
+            source: "API"
+            sendToDevicesForSigning: true
+            subWalletId: $subWalletId
+            solanaTransactionInput: { to: $to, amount: $amount, mintAddress: $mintAddress, decimals: $decimals }
+          }
+        ) {
+          requestId
+        }
+      }
+    `;
+
+    return {
+      query: mutation,
+      variables: {
+        subWalletId,
+        to,
+        amount,
+        mintAddress,
+        decimals,
+      },
+    };
+  }
+
+  private createSolanaInitialiseStakeTransactionMutation({
+    subWalletId,
+    newStakeAddress,
+    amount,
+    voteAddress,
+  }: CreateSolanaInitialiseStakeTransactionVariables): GraphQlQueryVariable<CreateSolanaInitialiseStakeTransactionVariables> {
+    const mutation = `
+      mutation solInitialiseStakeTransactionSDK($subWalletId: String!, $newStakeAddress: String!, $amount: String!, $voteAddress: String) {
+        createSolanaInitialiseStakeTransaction(
+          transactionInput: {
+            source: "API"
+            sendToDevicesForSigning: true
+            subWalletId: $subWalletId
+            solanaTransactionInput: { newStakeAddress: $newStakeAddress, amount: $amount, voteAddress: $voteAddress }
+          }
+        ) {
+          requestId
+        }
+      }
+    `;
+
+    return {
+      query: mutation,
+      variables: {
+        subWalletId,
+        newStakeAddress,
+        amount,
+        voteAddress: (voteAddress ?? null) as any, // gql does not handle undefined variables
+      },
+    };
+  }
+
+  private createSolanaActivateStakeTransactionMutation({
+    subWalletId,
+    voteAddress,
+    stakeAddress,
+  }: CreateSolanaActivateStakeTransactionVariables): GraphQlQueryVariable<CreateSolanaActivateStakeTransactionVariables> {
+    const mutation = `
+      mutation solActivateStakeTransactionSDK($subWalletId: String!, $stakeAddress: String!, $voteAddress: String!) {
+        createSolanaActivateStakeTransaction(
+          transactionInput: {
+            source: "API"
+            sendToDevicesForSigning: true
+            subWalletId: $subWalletId
+            solanaTransactionInput: { stakeAddress: $stakeAddress, voteAddress: $voteAddress }
+          }
+        ) {
+          requestId
+        }
+      }
+    `;
+
+    return {
+      query: mutation,
+      variables: {
+        subWalletId,
+        stakeAddress,
+        voteAddress,
+      },
+    };
+  }
+
+  private createSolanaSplitStakeTransactionMutation({
+    subWalletId,
+    amount,
+    stakeAddress,
+    newStakeAddress,
+  }: CreateSolanaSplitStakeTransactionVariables): GraphQlQueryVariable<CreateSolanaSplitStakeTransactionVariables> {
+    const mutation = `
+      mutation solSplitStakeTransactionSDK($subWalletId: String!, $stakeAddress: String!, $newStakeAddress: String!, $amount: String!) {
+        createSolanaSplitStakeTransaction(
+          transactionInput: {
+            source: "API"
+            sendToDevicesForSigning: true
+            subWalletId: $subWalletId
+            solanaTransactionInput: { stakeAddress: $stakeAddress newStakeAddress: $newStakeAddress, amount: $amount }
+          }
+        ) {
+          requestId
+        }
+      }
+    `;
+
+    return {
+      query: mutation,
+      variables: {
+        subWalletId,
+        stakeAddress,
+        amount,
+        newStakeAddress,
+      },
+    };
+  }
+
+  private createSolanaDeactivateStakeTransactionMutation({
+    subWalletId,
+    stakeAddress,
+  }: CreateSolanaDeactivateStakeTransactionVariables): GraphQlQueryVariable<CreateSolanaDeactivateStakeTransactionVariables> {
+    const mutation = `
+      mutation solDeactivateStakeTransactionSDK($subWalletId: String!, $stakeAddress: String!) {
+        createSolanaDeactivateStakeTransaction(
+          transactionInput: {
+            source: "API"
+            sendToDevicesForSigning: true
+            subWalletId: $subWalletId
+            solanaTransactionInput: { stakeAddress: $stakeAddress }
+          }
+        ) {
+          requestId
+        }
+      }
+    `;
+
+    return {
+      query: mutation,
+      variables: {
+        subWalletId,
+        stakeAddress,
+      },
+    };
+  }
+
+  private createSolanaWithdrawStakeTransactionMutation({
+    subWalletId,
+    withdrawAddress,
+    amount,
+    stakeAddress,
+  }: CreateSolanaWithdrawStakeTransactionVariables): GraphQlQueryVariable<CreateSolanaWithdrawStakeTransactionVariables> {
+    const mutation = `
+      mutation solTokenPaymentTransactionSDK($subWalletId: String!, $stakeAddress: String!, $amount: String!, $withdrawAddress: String!) {
+        createSolanaWithdrawStakeTransaction(
+          transactionInput: {
+            source: "API"
+            sendToDevicesForSigning: true
+            subWalletId: $subWalletId
+            solanaTransactionInput: { stakeAddress: $stakeAddress, amount: $amount, withdrawAddress: $withdrawAddress }
+          }
+        ) {
+          requestId
+        }
+      }
+    `;
+
+    return {
+      query: mutation,
+      variables: {
+        subWalletId,
+        withdrawAddress,
+        amount,
+        stakeAddress,
+      },
     };
   }
 }

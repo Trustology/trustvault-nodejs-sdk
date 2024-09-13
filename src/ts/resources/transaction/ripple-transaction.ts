@@ -1,11 +1,10 @@
 import { createHash } from "crypto";
 import { encodeForSigning, Payment } from "xrpl";
 import {
-  HdWalletPath,
   RequestClass,
+  SignableMessageData,
   SignCallback,
   SignRequest,
-  TransactionDigestData,
   TrustVaultRippleTransaction,
   TrustVaultRippleTransactionSchema,
 } from "../../types";
@@ -14,27 +13,20 @@ import { createSignRequest, getTransactionSignDataDigest } from "../signature";
 export class RippleTransaction implements RequestClass {
   public readonly requestId: string;
   public readonly payment: Payment;
-  public readonly unverifiedDigestData: TransactionDigestData;
-  public readonly hdWalletPath: HdWalletPath;
+  public readonly signData: SignableMessageData<TrustVaultRippleTransaction>;
 
   constructor({
     requestId,
-    transaction: payment,
-    unverifiedDigestData,
-    hdWalletPath,
+    signData,
   }: {
     requestId: string;
-    transaction: TrustVaultRippleTransaction;
-    unverifiedDigestData: TransactionDigestData;
-    hdWalletPath: HdWalletPath;
+    signData: SignableMessageData<TrustVaultRippleTransaction>;
   }) {
     this.requestId = requestId;
 
     /* Validate the transaction input data using the ZodSchema */
-    this.payment = this.validateRequestAndMapToPayment(payment);
-
-    this.unverifiedDigestData = unverifiedDigestData;
-    this.hdWalletPath = hdWalletPath;
+    this.payment = this.validateRequestAndMapToPayment(signData.data);
+    this.signData = signData;
   }
 
   /**
@@ -46,13 +38,10 @@ export class RippleTransaction implements RequestClass {
    * @returns {string} Expected Digest for the transaction
    */
   public constructExpectedDigest = (): Buffer => {
-    return Buffer.from(
-      createHash("sha512")
-        .update(Buffer.from(encodeForSigning(this.payment), "hex"))
-        .digest(),
-      0,
-      32,
-    );
+    return createHash("sha512")
+      .update(Buffer.from(encodeForSigning(this.payment), "hex"))
+      .digest()
+      .subarray(0, 32);
   };
 
   /**
@@ -62,32 +51,37 @@ export class RippleTransaction implements RequestClass {
    * @returns Promise
    */
   public async getSignRequests(requestId: string, sign: SignCallback): Promise<SignRequest[]> {
-    const digest: Buffer = this.constructExpectedDigest();
-    const signData = getTransactionSignDataDigest(digest, this.hdWalletPath);
-    const signRequest = await createSignRequest(requestId, digest, this.unverifiedDigestData, signData, sign);
-    return [signRequest];
+    return Promise.all(
+      this.signData.delegateSignData.map(async (delegateSignData) => {
+        const digest: Buffer = this.constructExpectedDigest();
+        const signData = getTransactionSignDataDigest(digest, delegateSignData.hdWalletPath);
+        return createSignRequest(requestId, digest, delegateSignData.unverifiedMessageData, signData, sign);
+      }),
+    );
   }
 
   public validateResponse(...args: any[]): boolean {
-    const digest: Buffer = this.constructExpectedDigest();
-    const { signData, shaSignData } = getTransactionSignDataDigest(digest, this.hdWalletPath);
-    const isSignDataCorrect = signData.toString("hex") === this.unverifiedDigestData.signData;
-    const isShaSignDataCorrect = shaSignData.toString("hex") === this.unverifiedDigestData.shaSignData;
-    const isDigestCorrect = digest.toString("hex") === this.unverifiedDigestData.transactionDigest;
-    const allDigestsAreCorrect = isSignDataCorrect && isShaSignDataCorrect && isDigestCorrect;
-    if (!allDigestsAreCorrect) {
-      throw new Error(
-        `The reconstructed digest data does not match with the expected values: "${JSON.stringify({
-          reconstructedDigest: {
-            digest,
-            signData,
-            shaSignData,
-          },
-          expectedDigest: this.unverifiedDigestData,
-        })}`,
-      );
+    for (const delegateSignData of this.signData.delegateSignData) {
+      const digest: Buffer = this.constructExpectedDigest();
+      const { signData, shaSignData } = getTransactionSignDataDigest(digest, delegateSignData.hdWalletPath);
+      const isSignDataCorrect = signData.toString("hex") === delegateSignData.unverifiedMessageData.signData;
+      const isShaSignDataCorrect = shaSignData.toString("hex") === delegateSignData.unverifiedMessageData.shaSignData;
+      const isDigestCorrect = digest.toString("hex") === delegateSignData.unverifiedMessageData.message;
+      const allDigestsAreCorrect = isSignDataCorrect && isShaSignDataCorrect && isDigestCorrect;
+      if (!allDigestsAreCorrect) {
+        throw new Error(
+          `The reconstructed digest data does not match with the expected values: ${JSON.stringify({
+            reconstructedDigest: {
+              digest: digest.toString("hex"),
+              signData: signData.toString("hex"),
+              shaSignData: shaSignData.toString("hex"),
+            },
+            expectedDigest: delegateSignData.unverifiedMessageData,
+          })}`,
+        );
+      }
     }
-    return allDigestsAreCorrect;
+    return true;
   }
 
   /**
